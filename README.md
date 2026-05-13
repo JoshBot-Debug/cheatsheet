@@ -23,4 +23,4 @@ You can use AI to help phrase sentences.
 
 **DO NOT PROMPT "GPT please give me 10 more points"**
 
-(AI contributers)[https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExNmIxajU0Ymo1dGtiMTl4cnk1cmlhamVja28wbWhxbG1tdzJ4N2M2YSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/gKHGnB1ml0moQdjhEJ/giphy.gif]
+![AI contributers](ai-contributers.webp)
