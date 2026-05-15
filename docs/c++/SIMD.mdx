@@ -59,6 +59,25 @@ XMM | 128 bits | 4 elements | SSE
 YMM | 256 bits | 8 elements | AVX / AVX2
 ZMM | 512 bits | 16 elements | AVX-512
 
+### Memory alignment
+
+To allocate memory for SIMD operations, the golden rule is that your alignment must match the register width
+
+### The Modern C++ Way
+Starting with C++17, you should use std::aligned_alloc. It is clean, standard, and works perfectly on Linux.
+
+TODO:
+On 64-bit Linux (and Windows), the standard malloc is guaranteed to return memory aligned to 16 bytes.
+
+Because 128-bit SIMD (SSE/SSE2) requires 16-byte alignment, standard malloc and std::vector will work perfectly fine with aligned instructions like _mm_load_ps or _mm_load_pd.
+
+Why the fuss then?
+The problem starts the moment you move from SSE (128-bit) to AVX (256-bit).
+
+The AVX Gap: AVX instructions like _mm256_load_ps require 32-byte alignment. Since malloc only guarantees 16, there is a 50% chance your pointer will fall on a 16-byte boundary that is not a 32-byte boundary (e.g., 0x...10 instead of 0x...20).
+
+The Segmentation Fault: If you use an aligned AVX load on a 16-byte aligned pointer provided by malloc, your program will crash.
+
 ### Summary of Alignment Requirements:
 * **AVX/AVX2 (256-bit)**: 32-byte alignment
 * **AVX-512 (512-bit)**: 64-byte alignment.
