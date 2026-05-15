@@ -1,0 +1,83 @@
+# Bitwise operations
+
+### Operators
+|Operator|Name|Logic|Resulting Bit is 1 if|
+|:---|:---|:---|:---|
+|&|AND|a & b|both bits are 1.|
+|\||OR|a \| b|at least one bit is 1.|
+|^|XOR|a ^ b|the bits are different.|
+|~|NOT|~a|the input bit is 0 (it flips the bit).|
+|<<|Left Shift|a << n|Shifts bits to the left adding 0s to the right.|
+|>>|Right Shift|a >> n|Shifts bits to the right discarding bits on the right.|
+
+### Powers of two
+If you're working in powers of two you can make use of bitwise operations to **avoid expensive modulus and division operations**
+
+This works only if **n** is a **power of two**
+```cpp
+uint64_t divide(uint64_t a)
+{
+  return a >> n;
+}
+
+uint64_t multiply(uint64_t a)
+{
+  return a << n;
+}
+
+uint64_t modulus(uint64_t a)
+{
+  return a & (n - 1);
+}
+```
+
+|Operation|Standard Arithmetic|Bitwise Equivalent|Logic
+|:---|:---|:---|:---|
+|Divide|a / 2^n|a >> n|Shifting right n times is mathematically identical to floor division by 2n.
+|Multiply|a * 2^n|a << n|Shifting left n times adds zeros| effectively multiplying by 2n.
+|Modulus|a % 2^n|a & (2^n - 1)|Masking with 2n−1 keeps only the remainder bits.
+
+### Useful bitwise operations
+
+#### Turn on a bit
+```cpp
+void on(uint64_t &mask, uint32_t n)
+{
+  mask |= 1ULL << n;
+}
+```
+
+#### Turn off a bit
+```cpp
+void off(uint64_t &mask, uint32_t n)
+{
+  mask &= ~(1ULL << n);
+}
+```
+
+#### Toggle a bit
+```cpp
+void toggle(uint64_t &mask, uint32_t n)
+{
+  mask ^= 1ULL << n;
+}
+```
+
+#### Check if a bit is on
+```cpp
+bool isOn(uint64_t mask, uint32_t n)
+{
+  return (mask & (1ULL << n)) != 0;
+}
+```
+
+#### Check if an unsigned int is odd
+If the **LSB** is on, the number is odd, otherwise it's even.
+```cpp
+bool isOdd(uint64_t mask, uint32_t n)
+{
+  return (mask & 1ULL) == 1;
+}
+```
+
+Notice how I used **1ULL**, it's because I use a 64 bit unsigned integer as the mask.
