@@ -7,8 +7,8 @@
 |\||OR|a \| b|at least one bit is 1.|
 |^|XOR|a ^ b|the bits are different.|
 |~|NOT|~a|the input bit is 0 (it flips the bit).|
-|<<|Left Shift|a << n|Shifts bits to the left adding 0s to the right.|
-|>>|Right Shift|a >> n|Shifts bits to the right discarding bits on the right.|
+|\<\<|Left Shift|a \<\< n|Shifts bits to the left adding 0s to the right.|
+|\>\>|Right Shift|a \>\> n|Shifts bits to the right discarding bits on the right.|
 
 ### Powers of two
 If you're working in powers of two you can make use of bitwise operations to **avoid expensive modulus and division operations**
@@ -33,8 +33,8 @@ uint64_t modulus(uint64_t a)
 
 |Operation|Standard Arithmetic|Bitwise Equivalent|Logic
 |:---|:---|:---|:---|
-|Divide|a / 2^n|a >> n|Shifting right n times is mathematically identical to floor division by 2n.
-|Multiply|a * 2^n|a << n|Shifting left n times adds zeros| effectively multiplying by 2n.
+|Divide|a / 2^n|a \>\> n|Shifting right n times is mathematically identical to floor division by 2n.
+|Multiply|a * 2^n|a \<\< n|Shifting left n times adds zeros| effectively multiplying by 2n.
 |Modulus|a % 2^n|a & (2^n - 1)|Masking with 2n−1 keeps only the remainder bits.
 
 ### Useful bitwise operations
