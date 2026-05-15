@@ -16,8 +16,20 @@ jobs:
         # You may use a newer version of https://github.com/actions/checkout
         uses: actions/checkout@v4
 
+        # 1. Set up Node.js environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 2. Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # 3. Run the build command
       - name: Generate your content
-        run: echo "Optional placeholder. Put your project's static website generator command here."
+        run: npm run build
 
       - name: Publish current workdir (which contains generated content) to GitHub Pages
         uses: rayluo/github-pages-overwriter@v1.3
