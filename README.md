@@ -23,4 +23,4 @@ You can use AI to help phrase sentences.
 
 **DO NOT PROMPT "GPT please give me 10 more points"**
 
-![AI contributers](ai-contributers.webp)
+![AI contributers](static/img/ai-contributers.webp)
