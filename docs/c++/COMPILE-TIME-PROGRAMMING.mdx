@@ -9,3 +9,151 @@ C++98 | Macros & Template Metaprogramming (TMP) | Macros were crude. TMP was dis
 C++11/14 | constexpr | The game-changer. Allowed you to write regular-looking C++ functions that could execute at compile time.
 C++17 | if constexpr | Allowed compile-time conditional branching |  drastically cleaning up template code.
 C++20 | consteval & constinit | Introduced **immediate functions** (guaranteed compile-time) and formal **Concepts** to replace messy template constraints.
+
+### Macros
+
+Marcros are a thing of the past now but it is used in many legacy systems and can still have it uses. Marcros are evaluated at compile time based on compiler flags most of the time.
+
+#### Contants
+```cpp
+#define MAX_BUFFER_SIZE 1024
+```
+
+#### Functions
+```cpp
+int square(int x)
+{
+  return x * x;
+}
+
+#define SQUARE(x) square(x)
+```
+```cpp
+template <typename... Args>
+void log(Args&&... args)
+{
+  (std::cout << ... << args);
+  std::cout << std::endl;
+}
+
+#define LOG(...) log(__VA_ARGS__)
+```
+
+#### Conditional Compilation
+This is the most common modern use
+
+```cpp
+#define DEBUG 1
+
+int main() {
+    std::cout << "Application started." << std::endl;
+
+#if DEBUG
+    std::cout << "[LOG] Debug mode is ON. Internal states verified." << std::endl;
+#else
+    std::cout << "Running in production mode." << std::endl;
+#endif
+
+    return 0;
+}
+```
+
+### Templates
+Templates are very powerfull and one of my most favourite feature.
+They give you the ability to write generic, type-safe code that the compiler customizes for you on the fly.
+
+The compiler uses that blueprint to generate actual functions or classes only when you request them with a specific data type. This process is called **template instantiation**.
+
+#### Function Templates
+Function templates are used to define generic arguments or return types of the function. When the compiler sees a template being used with a specific datatype, in this case a `float` or `int`,
+it will generate the actual function and perform it's duty, i.e, validate the datatype and the operations performed on it. 
+
+Add two numbers
+```cpp
+template <typename T>
+T add(T a, T b)
+{
+  return a + b;
+}
+```
+
+Add n numbers
+```cpp
+template <typename... T>
+T add(T&&... args)
+{
+  return (... + args);
+}
+```
+
+
+#### Class Templates
+Templates aren't just for functions; they allow you to create entire containers or classes that can hold any data type. This is exactly how the C++ Standard Template Library (STL) containers like `std::vector` or `std::list` work.
+```cpp
+// Added ttl as a uint64_t just as an example and made a static assert.
+template <typename T, uint64_t TTL>
+class ManagedPtr
+{
+static_assert(TTL > 0 && (TTL & (TTL - 1)) == 0, "Value must be a power of two");
+
+private:
+  T* m_Ptr;
+  TTL ttl;
+
+public:
+  template <typename... Args>
+  ManagedPtr(Args&&... args): m_Ptr(new T(std::forward<Args>(args)...)) {}
+
+  ManagedPtr(const ManagedPtr &other) = delete;
+  ManagedPtr& operator=(const ManagedPtr& other) = delete;
+
+  ManagedPtr(ManagedPtr&& other) noexcept: m_Ptr(nullptr) {
+    std::swap(m_Ptr, other.m_Ptr);
+  };
+
+  ManagedPtr& operator=(ManagedPtr&& other) noexcept {
+    if(this != &other) {
+      delete m_Ptr;
+      m_Ptr = other.m_Ptr;
+      other.m_Ptr = nullptr;
+    }
+    return *this;
+  };
+
+  ~ManagedPtr() {
+    delete m_Ptr;
+  }
+
+  T* get() const { return m_Ptr; }
+}
+```
+
+#### Template Specialization
+
+Sometimes, a generic blueprint doesn't work for a specific type. For example, comparing two numbers is straightforward, but comparing two char* (C-style strings) compares their memory addresses, not their alphabetical value.
+
+Template specialization allows you to write a custom "override" blueprint for a specific type.
+```cpp
+#include <iostream>
+#include <cstring>
+
+// Generic template
+template <typename T>
+bool isEqual(T a, T b) {
+    return a == b;
+}
+
+// Explicit specialization for const char*
+template <>
+bool isEqual<const char*>(const char* a, const char* b) {
+    return std::strcmp(a, b) == 0; // Correct way to compare C-strings
+}
+
+int main() {    
+    // Uses the specialized template because the arguments are const char*
+    std::cout << isEqual("apple", "apple") << std::endl; // True
+    return 0;
+}
+```
+
+### Concepts
