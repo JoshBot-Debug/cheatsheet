@@ -1,0 +1,65 @@
+# Byte Code
+
+**Byte code** is a low-level intermediate platform indepedent representation of source code.
+
+NOTE:***Cpython- software (also call- Python interpretor) = Cpython Compiler+PVM (Cpython interpretation part)***
+
+### How python works
+
+1- **Compilation** - CPython interpreter(Compilor component of the interpreter) automatically transfers your source code (python code) into byte code
+
+2- **Caching** - To speed up future runs,the byte code is cached in .pyc file within ``` __pycache__``` folder.
+
+3- **Interpretation** -  The PVM reads the byte code instructions line by line and executes on the specific os.
+
+### Key Charecteristics
+
+* Platform indepedent
+* Efficeincy - Byte code is more compact and faster for the PVM to executes more than raw text.
+* Implementation - The byte code format can change b/w python versions.
+* Abstraction - The byte code isn't meant for CPU, it is meant for software based PVM.
+* Internal instructions - The byte code is looks like series of numeric code in PVM 
+
+| Level | Representation | What it looks like| Who reads it|
+| :---  | :--- | :---| :--- |
+| **Human Code** | Source Code | a+b | You (The Coder)
+| **Mnemonic** | Disassembled code | BINARY_ADD | The ```dis``` module|
+| **Numeric (OPCODE)** | Actual Byte code | 122(example) | **The PVM** |
+| **Machine level code** | Binary | ```01111010``` | **The RAM \ Transistors** |
+
+**Mnemonic** (pronounced- ne-mon-ik) is simply **memory aid**.It is a way to replace something complex with something much easier for human to recognize.
+
+## Seeing Byte code in Action
+
+We can see the Byte code of any function using built-in ```dis``` (disassembler) module.
+
+```py 
+import dis
+
+def add(a,b):
+    return a+b
+
+dis.dis(add)
+
+```
+
+##### output
+
+```
+ 4           0 LOAD_FAST                0 (a)
+              2 LOAD_FAST                1 (b)
+              4 BINARY_ADD
+              6 RETURN_VALUE
+```
+Output Shows the specific operations the PVM  performs:
+
+1. ```LOAD_FAST``` : Load variable ``a`` onto stack
+2. ```LOAD_FAST``` : Load variable ``b`` onto stack
+3. ```BINARY_ADD``` : Add 2 values.
+4. ```RETURN_VALUE``` : Return the result.
+
+### Why use Byte Code?
+For portability - python stays flexible as long as the system has a python interpreter, it can run code reagardless of the hardware.
+
+
+
