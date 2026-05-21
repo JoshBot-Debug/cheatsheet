@@ -89,4 +89,6 @@ Write about Big O, amortized time
 
 Write about algorithms, techniques, etc 
 
-DFS - inorder traversal
+DFS - inorder, preorder, postorder traversal
+
+number system, hexidecimal, octal decimal, etc
