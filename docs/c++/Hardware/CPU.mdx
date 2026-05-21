@@ -1,0 +1,33 @@
+# CPU
+
+## TODO
+
+### - [ ] x86 Architecture Foundations
+
+- [ ] Study the evolution of the x86 pipeline: Fetch, Decode, Execute, and Write-back stages.
+
+- [ ] Understand Out-of-Order Execution (OoO): How the CPU uses Reservation Stations and Reorder Buffers (ROB) to execute instructions based on input availability rather than program order.
+
+- [ ] Master Register Renaming: How the hardware maps architectural registers (like rax, rbx) to a larger pool of physical registers to eliminate False Dependencies (WAR - Write After Read, WAW - Write After Write).
+
+- [ ] Deep dive into Memory Disambiguation: How the load/store queues ensure that out-of-order memory operations don't violate program logic (e.g., preventing a load from bypassing a speculative store to the same address).
+
+- [ ] Advanced CPU Features & Execution Mechanics
+
+### - [ ] Master Branch Prediction:
+
+* Study how the Branch Target Buffer (BTB) and Direction Predictors guess code paths.
+
+* Analyze the massive clock-cycle penalty of a pipeline flush during a branch misprediction.
+
+* Learn how to structure data and code loops to maximize prediction accuracy.
+
+- [ ] Explore Speculative Execution: How the CPU executes instructions down a predicted branch before it is guaranteed to run, and how it rolls back state if the prediction was wrong.
+
+### - [ ] Dive into SIMD & Vectorization:
+
+* Understand the hardware execution units for SSE, AVX, AVX2, and AVX-512.
+
+* Learn the data alignment rules required to feed vector units efficiently without alignment penalties.
+
+- [ ] Understand Instruction-Level Parallelism (ILP) and execution ports: How a single CPU core can issue and execute multiple micro-operations (μops) simultaneously in a single clock cycle if there are no data dependencies.
