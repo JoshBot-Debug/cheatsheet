@@ -394,11 +394,26 @@ Because the offset is identical in both virtual and physical memory, the CPU doe
 The **TLB** on your CPU chip is organized as a hardware array (typically set-associative, exactly like a CPU data cache).
 
 * **Direct Hardware Mapping**: When your program attempts to read a pointer, the CPU takes the **Index** bits from the pointer 
-and uses them as a direct hardware offset to jump straight to a specific row (or "set") inside the TLB array.
+and uses them as a direct hardware offset to jump straight to a specific row (or "**set**") inside the TLB array.
 * **The Tag Check**: Once it lands on that row, it compares the remaining Tag bits of your pointer against the tags stored in that hardware slot.
 * **The Verdict:**
   * **TLB Hit**: If the tags match, the hardware instantly releases the physical address mapped to that slot.
   * **TLB Miss**: If the slot is empty or the tags don't match, the CPU triggers a hardware miss and forces the **MMU** to perform a page-table walk.
+
+::::info
+**Direct Hardware Mapping**: What is a set?
+
+Because of how the hardware math works (using the Index bits), thousands of different virtual pages will map to the exact same set. However, a set can only hold a few entries at a time (determined by the "associativity" of your TLB, like 4-way or 8-way).
+
+A 2-Way Set-Associative TLB example:
+Imagine your TLB has 64 sets, and each set has 2 slots (2-way associative).
+
+**The Conflict**: Virtual Page #5, Virtual Page #69, and Virtual Page #133 all happen to have the exact same `Index` bits. Therefore, they are all forced to use Set 5.
+
+**The Capacity**: Because it is a 2-way TLB, Set 5 only has 2 physical slots available.
+
+**The Result**: Set 5 can hold the translation for Page #5 and Page #69 simultaneously. But if your program suddenly needs Page #133, it will look in Set 5, see that the **Tags** don't match (a **TLB Miss**), and **evict either Page #5 or #69 to make room**.
+::::
 
 ### The CR3 Register
 If it's a TLB miss, how does the **MMU** know where to look in **RAM** to find the **Master Page Table** maps for your specific program?
