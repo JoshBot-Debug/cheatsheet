@@ -406,6 +406,7 @@ and uses them as a direct hardware offset to jump straight to a specific row (or
 Because of how the hardware math works (using the Index bits), thousands of different virtual pages will map to the exact same set. However, a set can only hold a few entries at a time (determined by the "associativity" of your TLB, like 4-way or 8-way).
 
 A 2-Way Set-Associative TLB example:
+
 Imagine your TLB has 64 sets, and each set has 2 slots (2-way associative).
 
 **The Conflict**: Virtual Page #5, Virtual Page #69, and Virtual Page #133 all happen to have the exact same `Index` bits. Therefore, they are all forced to use Set 5.
