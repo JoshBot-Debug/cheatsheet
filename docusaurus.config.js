@@ -62,7 +62,10 @@ const config = {
       require.resolve("@easyops-cn/docusaurus-search-local"),
       /** @type {import("@easyops-cn/docusaurus-search-local").PluginOptions} */
       // @ts-ignore
-      { hashed: true },
+      {
+        hashed: true,
+        docsRouteBasePath: "/",
+      },
     ],
   ],
 
