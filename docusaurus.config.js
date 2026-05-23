@@ -95,6 +95,14 @@ const config = {
               {
                 label: "Cheatsheet",
                 to: "/",
+              },
+              {
+                label: "C++",
+                to: "/category/c"
+              },
+              {
+                label: "Web",
+                to: "/category/web"
               }
             ],
           },
