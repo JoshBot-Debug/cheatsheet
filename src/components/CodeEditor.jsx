@@ -123,12 +123,10 @@ export default function CodeEditor(props) {
           fontSize: 14,
           fontFamily: '"JetBrains Mono", monospace',
           automaticLayout: true,
-          scrollBeyondLastLine: false,
           smoothScrolling: true,
           insertSpaces: true,
-          tabSize: 1,
+          tabSize: 2,
           detectIndentation: false,
-          autoIndent: true,
           padding: {
             top: 12,
             bottom: 12,
