@@ -27,7 +27,7 @@ jobs:
         run: npm run build
 
       - name: Inject Custom Domain
-        run: echo "cheatsheet.iotafox.com" > CNAME 
+        run: echo "cheatsheet.iotafox.com" > build/CNAME 
 
       - name: Publish current workdir (which contains generated content) to GitHub Pages
         uses: rayluo/github-pages-overwriter@v1.3
