@@ -53,3 +53,5 @@ jobs:
           # (If you want to keep your old "gh-pages" branch,
           # you should define a different target branch for this GPO action to work with.)
           target-branch: gh-pages
+
+          cname: cheatsheet.iotafox.com
