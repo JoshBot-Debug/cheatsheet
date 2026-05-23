@@ -47,7 +47,7 @@ Even though the threads never access the same data, the hardware cache coherency
 ### 2. Virtual Memory & Physical Memory & Translation Lookaside Buffer
 
 When you allocate memory in C++ (like creating a `new` object or a `std::vector`), the operating system doesn't give you direct access to the physical 
-copper lines and pins on your RAM sticks. Instead, it hands your program a [**Virtual Address**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address).
+copper lines and pins on your RAM sticks. Instead, it hands your program a [**Virtual Address**](/c++/Hardware/RAM#virtual-address).
 
 Every single application running on your computer thinks it has its own private, massive sandbox of memory. 
 The hardware component responsible for making this trick work is the **MMU (Memory Management Unit)** inside your CPU.
@@ -57,13 +57,13 @@ the CPU caches recent lookups in the **TLB**. Standard Linux memory pages are **
 fragmented **pointer soup** scattered across gigabytes of memory, it triggers rampant TLB cache evictions (TLB misses), forcing slow kernel page-table walks. This 
 happens for both **ITLB** & **DTLB**
 
-* **The Page Table**: To translate your program's [**virtual address**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) (e.g., `0x7FFF54B2`) into the actual location on the physical RAM stick (e.g., `0x1A2B3C4D`), 
+* **The Page Table**: To translate your program's [**virtual address**](/c++/Hardware/RAM#virtual-address) (e.g., `0x7FFF54B2`) into the actual location on the physical RAM stick (e.g., `0x1A2B3C4D`), 
 the OS maintains a map in physical RAM called a **Page Table**.
 * **The Scale**: Because mapping individual bytes would make the map larger than the RAM itself, the OS groups physical RAM into discrete **4 KB chunks called Page**s.
-* **Instructions**: Instructions are stored in RAM and have [**virtual addresses**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address)
-* **Data**: Data is stored in RAM and has [**virtual addresses**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address).
+* **Instructions**: Instructions are stored in RAM and have [**virtual addresses**](/c++/Hardware/RAM#virtual-address)
+* **Data**: Data is stored in RAM and has [**virtual addresses**](/c++/Hardware/RAM#virtual-address).
 
-Both **instructions & data** [**virtual addresses**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) are fetched by the **MMU** into **ITLB** & **DTLB**.
+Both **instructions & data** [**virtual addresses**](/c++/Hardware/RAM#virtual-address) are fetched by the **MMU** into **ITLB** & **DTLB**.
 
 #### 1. DTLB (Data Translation Lookaside Buffer)
 Caches virtual-to-physical translations for data addresses (your variables, arrays, buffers, and heap allocations).
@@ -77,13 +77,13 @@ the data fetch pipeline to stall completely while the **MMU** resolves where the
 * **The Fix:** Package data structures into contiguous arrays (`std::vector` or custom arena allocators). This ensures hundreds of elements are packed into a single 4 KB page, allowing a single DTLB entry to cover thousands of sequential operations.
 
 #### 2. ITLB (Instruction Translation Lookaside Buffer)
-Caches virtual-to-physical translations for **executable code instructions**. Compiled machine instructions are saved as [**virtual addresses**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) too, 
+Caches virtual-to-physical translations for **executable code instructions**. Compiled machine instructions are saved as [**virtual addresses**](/c++/Hardware/RAM#virtual-address) too, 
 living inside the executable `.text` segment.
 
 * **Location**: Found in the L1 cache
 
 * **The Fragmentation Trap:** If your code path frequently jumps across deeply **nested dependencies**, massive **shared libraries**, or highly fragmented 
-instruction paths (like **virtual method tables** or **heavy callback loops**). Instructions are also stored as [**virtual addresses**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) across different 4 KB 
+instruction paths (like **virtual method tables** or **heavy callback loops**). Instructions are also stored as [**virtual addresses**](/c++/Hardware/RAM#virtual-address) across different 4 KB 
 pages. Every pointer hop hits a new page, knocking older pages out of the ITLB, the CPU triggers **ITLB Misses**. This forces the instruction fetch pipeline 
 to stall completely while the **MMU** resolves where the machine code resides, forcing slow kernel page-table walks.
 
@@ -301,19 +301,19 @@ int main() {
 
 ## Loading a 32 bit integer into the CPUs
 
-When you read a 32-bit integer, both the 4 KB page (only the [**virtual address**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) mapping) and 64 byte cache line is loaded into memory, 
+When you read a 32-bit integer, both the 4 KB page (only the [**virtual address**](/c++/Hardware/RAM#virtual-address) mapping) and 64 byte cache line is loaded into memory, 
 but they happen at completely different levels of the hardware hierarchy to solve two entirely different problems.
 
 * You **load** the **64-byte cache line** into the **L1 Data Cache** (**SRAM**).
-* You **load** the **4 KB page** into the **TLB** to map the [**virtual addresses**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) to physical addresses.
+* You **load** the **4 KB page** into the **TLB** to map the [**virtual addresses**](/c++/Hardware/RAM#virtual-address) to physical addresses.
 
 ### 1. The Virtual Map
 
 Before the CPU can even think about pulling data out of a cache or physical RAM, 
 it needs to translate the **virtual pointer** of that **32-bit integer** into a **physical location on the RAM** stick.
 
-1. The **MMU** looks up the [**virtual address**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) in the L1 **DTLB**.
-2. If it misses, it checks the **STLB**. If that misses, it performs a [**hardware page walk**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) across the **4 KB page tables stored in DRAM**. 
+1. The **MMU** looks up the [**virtual address**](/c++/Hardware/RAM#virtual-address) in the L1 **DTLB**.
+2. If it misses, it checks the **STLB**. If that misses, it performs a [**hardware page walk**](/c++/Hardware/RAM#virtual-address) across the **4 KB page tables stored in DRAM**. 
 3. Once found, the **mapping** for that entire **4 KB page** is **cached in the TLB**. Only the translation map is loaded into the TLB, not the whole 4 KB of data.
 
 *NOTE: This happens for instructions too (**ITLB in L1 Instruction Cache**)*
@@ -321,7 +321,7 @@ it needs to translate the **virtual pointer** of that **32-bit integer** into a 
 ::::info
 **Page-table walk**
 
-Read from [**Virtual address**](/cheatsheet/docs/c++/Hardware/RAM#virtual-address) till [**CR3 Register**](/cheatsheet/docs/c++/Hardware/RAM#the-cr3-register)
+Read from [**Virtual address**](/c++/Hardware/RAM#virtual-address) till [**CR3 Register**](/c++/Hardware/RAM#the-cr3-register)
 to understand what **page-table walk** is and how we find the correct page on RAM when it's not in **TLB**
 ::::
 

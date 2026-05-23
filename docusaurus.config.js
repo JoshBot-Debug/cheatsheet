@@ -94,16 +94,8 @@ const config = {
             items: [
               {
                 label: "Cheatsheet",
-                to: "/docs/intro",
-              },
-              {
-                label: "C++",
-                to: "/docs/category/c",
-              },
-              {
-                label: "Web",
-                to: "/docs/category/web",
-              },
+                to: "/",
+              }
             ],
           },
           {
