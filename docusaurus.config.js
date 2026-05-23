@@ -23,7 +23,7 @@ const config = {
   url: "https://iotafox.com",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/cheatsheet/",
+  baseUrl: "/",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
@@ -47,9 +47,8 @@ const config = {
       ({
         docs: {
           sidebarPath: "./sidebars.js",
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
           editUrl: "https://github.com/JoshBot-Debug/cheatsheet/blob/main",
+          routeBasePath: "/",
         },
         theme: {
           customCss: "./src/css/custom.css",
@@ -58,7 +57,6 @@ const config = {
     ],
   ],
   themes: [
-    // ... Your other themes.
     [
       // @ts-ignore
       require.resolve("@easyops-cn/docusaurus-search-local"),
@@ -71,8 +69,6 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      // Replace with your project's social card
-      image: "img/docusaurus-social-card.jpg",
       colorMode: {
         respectPrefersColorScheme: true,
       },
@@ -80,19 +76,13 @@ const config = {
         title: "Cheatsheet",
         logo: {
           alt: "Cheatsheet Logo",
-          src: "img/logo.svg",
+          src: "img/logo.png",
         },
         items: [
           {
-            type: "docSidebar",
-            sidebarId: "docsSidebar",
-            position: "left",
-            label: "Docs",
-          },
-          {
             href: "https://github.com/JoshBot-Debug/cheatsheet",
             label: "GitHub",
-            position: "right",
+            position: "left",
           },
         ],
       },

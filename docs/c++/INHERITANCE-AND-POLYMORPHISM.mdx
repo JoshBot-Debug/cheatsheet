@@ -2,44 +2,43 @@ import CodeEditor from '@site/src/components/CodeEditor';
 
 # Inheritance & polymorphism
 
-<CodeEditor 
-code={`#include <iostream>
+```cpp
+#include <iostream>
 
 using namespace std;
 
 class Base {
 public:
-    virtual void type() {
-      cout << "Base" << endl;
-    }
+  virtual void type() {
+    cout << "Base" << endl;
+  }
 };
 
 class DerivedPublic : public Base {
 public:
-    virtual void type() override {
-      cout << "DerivedPublic" << endl;
-    }
+  virtual void type() override {
+    cout << "DerivedPublic" << endl;
+  }
 };
 
 class DerivedPrivate : private Base {
 public:
-    virtual void type() override {
-      Base::type();
-    }
+  virtual void type() override {
+    Base::type();
+  }
 };
 
 int main() {
-    DerivedPublic *dp = new DerivedPublic();
-    DerivedPrivate *dpr = new DerivedPrivate();
+  DerivedPublic *dp = new DerivedPublic();
+  DerivedPrivate *dpr = new DerivedPrivate();
 
-    Base *bp1 = dp;
+  Base *bp1 = dp;
 
-    dp->type();
-    dpr->type();
-    bp1->type();
-    bp1->Base::type();
+  dp->type();
+  dpr->type();
+  bp1->type();
+  bp1->Base::type();
 
-    return 0;
+  return 0;
 }
-`}
-/>
+```

@@ -12,7 +12,12 @@ export default function CodeEditor(props) {
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
 
-  const [code, setCode] = useState(props.code);
+  const [code, setCode] = useState(props.code || `#include <iostream>
+ 
+int main() {
+  std::cout << "Don't take my word for it, try it out yourself!" << std::endl;
+}
+`);
 
   const [loading, setLoading] = useState(false);
 
@@ -160,6 +165,7 @@ export default function CodeEditor(props) {
             display: "flex",
             alignItems: "center",
             gap: "6px",
+            minHeight: "28px"
           }}
         >
           {loading && (
