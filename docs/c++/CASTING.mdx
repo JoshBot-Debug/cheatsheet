@@ -8,8 +8,7 @@
         * The compiler will tust you can do treat the pointer as a `Derived*`
         * The program may crash if the pointer was not a `Derived*` or worse could happen, i.e **Undefined Behavior**. You could **read garbage**.
     * **Upcast**: `Derived*` to `Base*`
-        * This can happen implicitly, we don't need to explicitly cast it with `static_cast`
-        * It's most useful when paired with **virtual methods**. Upcast to call the method implementation of the base class instead of the derived class.
+        * **This can happen implicitly**, we don't need to explicitly cast it with `static_cast`
 
 Common usage:
 ```cpp
@@ -37,11 +36,12 @@ for(int i = 0; i < n; i++) {}
 ## dynamic_cast()
 * A dynamic cast is used when you're not sure what the type of the object is and you want to try-cast it.
 * Typically used to **downcast** in **polymorphic hierarchies**
-* Returns a nullptr if the cast fails.
+* Returns a `nullptr` if the cast fails or throws and error if casting a reference.
 * Impacts performance, it checks the vtable. Depending on the **polymorphic hierarchy**, this could be a lot in high-performance applications.
 * Safest way to cast.
 * Relies on `RTTI`
-    * **Run-Time Type Information**: In some high-performance fields, RTTI may be disabled to improve performance.
+  * **Run-Time Type Information**: In some high-performance fields, RTTI may be disabled to improve performance.
+* Dynamic cast can also **cross-cast**
 
 ## reinterpret_cast()
 * **Very dangerous** way to cast.
@@ -62,3 +62,8 @@ for(int i = 0; i < n; i++) {}
 | C-style cast       | Depends on what it resolves to | Depends                        |
 
 `static_cast` may be compile time if the compiler knows exactly how to do the conversion, e.g `int` -> `float`, `Base*` -> `Derived*`
+
+
+## References & Citations
+* **Cross-Casting Mechanics**:
+  * **Hands-On Design Patterns with C++**, Chapter 1, Page 16 ("Multiple Inheritance"). **Fedor G. Pikus**. Packt Publishing.

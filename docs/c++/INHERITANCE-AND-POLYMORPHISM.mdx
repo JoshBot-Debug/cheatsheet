@@ -1,0 +1,48 @@
+import CodeEditor from '@site/src/components/CodeEditor';
+
+# Inheritance & polymorphism
+
+<CodeEditor 
+code={`
+// Online C++ compiler to run C++ program online
+#include <iostream>
+
+using namespace std;
+
+class Base {
+public:
+  virtual void type() {
+    cout << "Base" << endl;
+  }
+};
+
+class DerivedPublic : public Base {
+public:
+  virtual void type() override {
+    cout << "DerivedPublic" << endl;
+  }
+};
+
+class DerivedPrivate : private Base {
+public:
+  virtual void type() override {
+    // cout << "DerivedPrivate" << endl;
+    Base::type();
+  }
+};
+
+int main() {
+  DerivedPublic *dp = new DerivedPublic();
+  DerivedPrivate *dpr = new DerivedPrivate();
+
+  Base *bp1 = dp;
+
+  dp->type();
+  dpr->type();
+  bp1->type();
+  bp1->Base::type();
+
+  return 0;
+}
+`}
+/>
