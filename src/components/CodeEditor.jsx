@@ -126,6 +126,8 @@ export default function CodeEditor(props) {
           scrollBeyondLastLine: false,
           smoothScrolling: true,
           insertSpaces: true,
+          tabSize: 1,
+          detectIndentation: false,
           autoIndent: true,
           padding: {
             top: 12,
