@@ -2,6 +2,124 @@ import CodeEditor from '@site/src/components/CodeEditor';
 
 # Inheritance & polymorphism
 
+A class is a definition of an object. It describes the algorithms, the data, it's format and relations to other classes. An object is a concrete instantiation of a class. **A class is a user-defined type**.
+
+## Is-a principal
+
+A class relationship defines an *is-a* relationship if the derived class **publicly* inherits the base class:
+
+```cpp
+
+class Rectangle {}
+
+class Square : public Retangle {}
+
+```
+Here we are saying that a `Square` is  a `Retangle`. The `Square` exposes all of `Retangle` public methods and members. We are creating a **contract** here that states, any object that requires a `Retangle` can also accept a `Square`.
+
+## Has-a principal
+
+A class relationship defines an *Has-a* relationship if the derived class **privately** inherits the base class:
+
+```cpp
+
+class Container : private std::vector<int> {
+public:
+  using std::vector<int>::size;
+}
+
+```
+
+`Container` privately extends `std::vector<int>`. This is a *Has-a* relationship. The derived class get's the implementation details from the base class. The derived class cannot be used in place of the base class.
+
+It's also possible to expose `std::vector` methods publicly with the help of `using`.
+
+::::note
+**Composition over inheritance**:
+
+Generally it's prefered to compose over inherit. This `Container` is a great example. While this works and we can use the `std::vector` implementation this way, the prefered method is composition:
+
+```cpp
+class Container {
+private:
+  std::vector<int> data;
+}
+```
+::::
+
+::::note
+**Empty Base Class Optimization (EBCO)**
+
+In C++ it's not possible to reference an object that no size in memory. An empty struct is given the size of 1 byte.
+
+However, if a derived class extends an empty base class, the size of the object becomes the size of the derived class, the base class may have no size.
+
+You can also use `[[no_unique_address]]` in C++20 to keep `Base` as a member but make sure it does not have a unique address. A good example is `unique_ptr`
+
+```cpp
+#include <iostream>
+
+class Base {};
+
+class Derived : public Base {
+  int data;
+};
+
+class Composed {
+  Base base;
+  int data;
+};
+
+int main() {
+  std::cout << sizeof(Base) << std::endl;    // 1 byte
+  std::cout << sizeof(Derived) << std::endl; // 4 bytes
+  std::cout << sizeof(Composed) << std::endl; // 8 bytes (3 bytes of padding)
+}
+```
+
+```cpp
+#include <iostream>
+
+class Deleter {
+public:
+  void operator() (void *) {
+    // delete
+  };
+};
+
+template<class T, class Deleter>
+class unique_ptr_bad {
+    T* pointer = nullptr;
+    Deleter deleter;
+
+   public:
+    ~unique_ptr_bad() {
+        deleter(pointer); // overloaded operator()
+    };
+};
+
+template<class T, class Deleter>
+class unique_ptr_good {
+    T* pointer = nullptr;
+    [[no_unique_address]] Deleter deleter;
+
+   public:
+    ~unique_ptr_good() {
+        deleter(pointer); // overloaded operator()
+    };
+};
+
+int main() {
+  unique_ptr_bad<int, Deleter> bad;
+  unique_ptr_good<int, Deleter> good;
+
+  std::cout << sizeof(bad) << std::endl;  // 16 byte
+  std::cout << sizeof(good) << std::endl; // 8 bytes
+}
+::::
+
+## Polymorphism through inheritance
+
 ```cpp
 #include <iostream>
 
@@ -23,8 +141,9 @@ public:
 
 class DerivedPrivate : private Base {
 public:
+  // overriding the base class's type() and exposing it as public. Otherwise it would not be accessable
   virtual void type() override {
-    Base::type();
+    Base::type(); // calling the base class's type()
   }
 };
 
@@ -32,7 +151,8 @@ int main() {
   DerivedPublic *dp = new DerivedPublic();
   DerivedPrivate *dpr = new DerivedPrivate();
 
-  Base *bp1 = dp;
+  Base *bp1 = dp; // is-a relationship
+  // Base *bp2 = dpr; // has-a relationship | This will throw an error, dpr is privately inheriting from Base
 
   dp->type();
   dpr->type();
@@ -42,3 +162,8 @@ int main() {
   return 0;
 }
 ```
+
+## References & Citations
+Cross-Casting Mechanics:
+Hands-On Design Patterns with C++, Chapter 1, Page 16 ("Multiple Inheritance"). Fedor G. Pikus. Packt Publishing.
+
