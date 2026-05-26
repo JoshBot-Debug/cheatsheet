@@ -133,6 +133,12 @@ public:
 Sometimes, a generic blueprint doesn't work for a specific type. For example, comparing two numbers is straightforward, but comparing two char* (C-style strings) compares their memory addresses, not their alphabetical value.
 
 Template specialization allows you to write a custom "override" blueprint for a specific type.
+
+There are two types of specialization:
+  * **Partial Specialization**
+  * **Full / Explicit Specialization**
+
+**Full specialization** for functions:
 ```cpp
 #include <iostream>
 #include <cstring>
@@ -152,6 +158,60 @@ bool isEqual<const char*>(const char* a, const char* b) {
 int main() {    
   // Uses the specialized template because the arguments are const char*
   std::cout << isEqual("apple", "apple") << std::endl; // True
+  return 0;
+}
+```
+
+**Explicit & Partial Specialization** for classes:
+```cpp
+#include <iostream>
+
+// Primary template
+template <int N, int D>
+struct Ratio {
+  static const int num = N;
+  static const int den = D;
+  
+  void print() const {
+    std::cout << num << "/" << den << std::endl;
+  }
+};
+
+// Partial Specialization for divide by zero
+template <int N>
+struct Ratio<N, 0> {
+  static const int num = N;
+  static const int den = 1;
+  
+  void print() const {
+    std::cout << "Partial Specialization Activated: " << N << "/0" << std::endl;
+  }
+};
+
+// Explicit (Full) Specialization for 0 / 0
+template <>
+struct Ratio<0, 0> {
+  static const int num = 0;
+  static const int den = 0;
+  
+  void print() const {
+    std::cout << "Explicit Specialization Activated: 0/0" << std::endl;
+  }
+};
+
+int main() {
+  // Matches the Primary Template
+  Ratio<3, 4> three_quarters;
+  three_quarters.print();
+
+  // Matches the Partial Specialization
+  Ratio<5, 0> invalid_denominator;
+  invalid_denominator.print();
+
+  // Matches the Explicit Specialization
+  Ratio<0, 0> indeterminate;
+  indeterminate.print();
+
   return 0;
 }
 ```
@@ -195,6 +255,83 @@ auto add(auto a, decltype(a) b) {
 }
 ```
 ::::
+
+### Variable Template C++14
+
+*Note: Use unique pointers, this is just an example*
+```cpp
+#include <iostream>
+
+// A global templated variable.
+template<typename T>
+T* g_Ptr = nullptr;
+
+int main() {
+  g_Ptr<int> = new int(99);
+
+  std::cout << *g_Ptr<int>;
+
+  delete g_Ptr<int>;
+
+  return 0;
+}
+```
+
+
+### Template template parameters
+
+Without template template parameters, if you wanted to pass a container, your template would look like this: template `<typename T, typename Container>`.
+
+The user would then have to instantiate it like this: `Stack<int, std::vector<int>> v;`. Redundant repetition of `int`.
+
+```cpp
+
+#include <iostream>
+#include <vector>
+#include <deque>
+
+template <typename T, template <typename> class Container>
+class Stack {
+private:
+  Container<T> elems; 
+
+public:
+  void push(const T& elem) {
+    elems.push_back(elem);
+  }
+
+  void pop() {
+    if (!elems.empty())
+      elems.pop_back();
+  }
+
+  T top() const {
+    return elems.back();
+  }
+};
+
+int main() {
+
+  {
+    // Pass 'int' as the data type, and 'std::vector' as the container template
+    Stack<int, std::vector> stack;
+    stack.push(10);
+    stack.push(20);
+    std::cout << "Vector Stack Top: " << stack.top() << std::endl;
+  }
+
+  {
+    // Easily swap the underlying storage to a std::deque
+    Stack<std::string, std::deque> stack;
+    stack.push("Hello");
+    stack.push("World");
+    std::cout << "Deque Stack Top: " << stack.top() << std::endl; // World
+  }
+
+  return 0;
+}
+
+```
 
 ## Concepts
 **Source**: [Back to Basics: Concepts in C++ - Nicolai Josuttis - CppCon 2024](https://www.youtube.com/watch?v=jzwqTi7n-rg)
@@ -510,3 +647,6 @@ Feature | Constrained Overloads (requires clause) | Inline if constexpr + requir
 Readability | Better for architectural separation. Keeps functions short and single-purpose. | Better when the logic is simple and localized inside one function.
 Error Messages | Excellent. If a constraint fails, the compiler tells you exactly which function signature failed. | Can sometimes lead to longer error messages inside the function body if a branch fails to compile.
 Extensibility | **Open for extension**. Other programmers can add new overloads for custom types without touching your original code. | **Closed for extension**. If a new type needs a brand new edge case, you must modify the original function to add another else if constexpr.
+
+## References & Citations
+* **Hands-On Design Patterns with C++**, Chapter 2, ("Class and Function Templates"). **Fedor G. Pikus**.
