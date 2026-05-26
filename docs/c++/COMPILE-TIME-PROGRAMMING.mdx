@@ -333,6 +333,50 @@ int main() {
 
 ```
 
+### Template Compilation
+
+Templates don't compile until they are used so errors won't show up until the templated method is called.
+
+In the example below, `sum()` method is invalid for `char*` but it isn't compile till the method is called. This is **Lazy Template Instantiation**. Everything else, like `push()` is valid and it compiles because it was used.
+
+**Lazy Instantiation**: It rules that if a member function of a template class is never called, it does not exist in the final compiled binary.
+
+```cpp
+#include <iostream>
+
+template <typename T>
+class Array {
+private:
+  T m_Arr[2];
+
+public:
+  void push(T a, T b) {
+    m_Arr[0] = a;
+    m_Arr[1] = b;
+  }
+
+  void sum() {
+    T result = m_Arr[0] + m_Arr[1];
+    std::cout << result << std::endl;
+  }
+};
+
+int main() {
+
+  Array<int> a;
+  a.push(5,5);
+  a.sum();
+
+  char data[2] = {'a', 'b'};
+
+  Array<char*> b;
+  b.push(&data[0], &data[1]);
+  // b.sum();   // m_Arr[0] + m_Arr[1] is not valid for char* but until we call sum(), that code is never compiled so no error shows up
+
+  return 0;
+}
+```
+
 ## Concepts
 **Source**: [Back to Basics: Concepts in C++ - Nicolai Josuttis - CppCon 2024](https://www.youtube.com/watch?v=jzwqTi7n-rg)
 

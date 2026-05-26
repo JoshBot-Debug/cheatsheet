@@ -1,0 +1,77 @@
+# The rule of zero
+
+Rule | Functions Included | Core Purpose | C++ Version
+:--- | :--- | :--- | :---
+**Rule of 3** | Destructor, Copy Constructor, Copy Assignment | **Manual Resource Management:** Ensures that classes  managing raw resources (like raw pointers or file handles) perform deep copies and clean up properly to avoid memory leaks and double-frees. | Pre-C++11 (C++98 / C++03)
+**Rule of 5** | *Rule of 3 functions*, Move Constructor, Move Assignment | **Performance Optimization (Move Semantics):** Allows resources from temporary or expiring objects ($rvalues$) to be safely "stolen" or transferred instead of expensively copied. | C++11 and later
+**Rule of 6** | *Rule of 5 functions*, Default Constructor | **Self-Sufficient Lifecycle:** Explicitly managing or default-defining (`= default`) how an object is created completely from scratch alongside its resource handling rules. | C++11 and later
+**Rule of 7** | *Rule of 6 functions*, `swap()` function | **Strong Exception Safety:** Implements a non-throwing, hyper-efficient utility to exchange contents. This serves as the core engine for the *Copy-and-Swap Idiom*. | C++11 and later
+**Rule of Zero** | *None* (No custom special member functions) | **RAII Abstraction:** The modern pinnacle. Rely completely on standard containers (`std::vector`, `std::unique_ptr`, `std::string`) to automatically manage their own lifecycles. You write 0 resource code. | C++11 / C++14 and beyond
+
+
+```cpp
+#include <iostream>
+#include <utility>
+
+template <typename T>
+class UniquePtr {
+private:
+  T* m_ptr;
+
+public:
+  // RULE OF 6: DEFAULT CONSTRUCTOR
+  constexpr UniquePtr() noexcept : m_ptr(nullptr) {}
+
+  explicit UniquePtr(T* ptr) noexcept : m_ptr(ptr) {}
+
+  // RULE OF 3: DESTRUCTOR
+  ~UniquePtr() noexcept {
+    if (m_ptr) {
+      delete m_ptr;
+      m_ptr = nullptr;
+    }
+  }
+
+  // RULE OF 3: COPY OPERATIONS (DELETED)
+  UniquePtr(const UniquePtr&) = delete;            // Copy Constructor
+  UniquePtr& operator=(const UniquePtr&) = delete; // Copy Assignment
+
+  // RULE OF 5: MOVE CONSTRUCTOR
+  UniquePtr(UniquePtr&& other) noexcept : m_ptr(std::exchange(other.m_ptr, nullptr)) {}
+
+  // RULE OF 5: MOVE ASSIGNMENT OPERATOR
+  UniquePtr& operator=(UniquePtr&& other) noexcept {
+    if (this != &other) {
+      delete m_ptr;
+      m_ptr = std::exchange(other.m_ptr, nullptr);
+    }
+    return *this;
+  }
+
+  // RULE OF 7: SWAP FUNCTION
+  void swap(UniquePtr& other) noexcept {
+    using std::swap;
+    swap(this->m_ptr, other.m_ptr);
+  }
+
+  // Extra stuff, for the unique_ptr sake
+  // Dereference operator: *ptr
+  T& operator*() const { return *m_ptr; }
+
+  // Member access operator: ptr->member
+  T* operator->() const { return m_ptr; }
+
+  // Check if pointer is holding something valid: if(ptr)
+  explicit operator bool() const noexcept { return m_ptr != nullptr; }
+
+  // Relinquish ownership without deleting the underlying object
+  T* release() noexcept {
+    return std::exchange(m_ptr, nullptr);
+  }
+};
+
+template <typename T>
+void swap(UniquePtr<T>& a, UniquePtr<T>& b) noexcept {
+  a.swap(b);
+}
+```
