@@ -6,7 +6,7 @@ A class is a definition of an object. It describes the algorithms, the data, it'
 
 ## Is-a principal
 
-A class relationship defines an *is-a* relationship if the derived class **publicly* inherits the base class:
+A class relationship defines an *is-a* relationship if the derived class **publicly** inherits the base class:
 
 ```cpp
 
@@ -119,6 +119,7 @@ int main() {
 ::::
 
 ## Polymorphism through inheritance
+This here is **runtime polymorphism**.
 
 ```cpp
 #include <iostream>
@@ -134,31 +135,128 @@ public:
 
 class DerivedPublic : public Base {
 public:
-  virtual void type() override {
+  void type() override {
     cout << "DerivedPublic" << endl;
   }
 };
 
 class DerivedPrivate : private Base {
 public:
-  // overriding the base class's type() and exposing it as public. Otherwise it would not be accessable
-  virtual void type() override {
-    Base::type(); // calling the base class's type()
+  void type() override {
+    Base::type();
   }
 };
 
 int main() {
-  DerivedPublic *dp = new DerivedPublic();
-  DerivedPrivate *dpr = new DerivedPrivate();
+  DerivedPublic *derived_public = new DerivedPublic();
+  DerivedPrivate *derived_private = new DerivedPrivate();
 
-  Base *bp1 = dp; // is-a relationship
-  // Base *bp2 = dpr; // has-a relationship | This will throw an error, dpr is privately inheriting from Base
+  Base *base = derived_public;                                        // Upcasting from `DerivedPublic*` to `Base*` implicitly.
+  // DerivedPublic *downcasted_base = base;                           // ERROR: Cannot implicitly downcast
+  DerivedPublic *downcasted_base_s = static_cast<DerivedPublic*>(base);   // Downcast via static_cast is allowed.
+  DerivedPublic *downcasted_base_d = dynamic_cast<DerivedPublic*>(base);  // Downcast via dynamic_cast is allowed, it has a runtime cost, looking up the vtable but it's safe to call. If you tried to cast to a wrong type, you'll get a nullptr. If it's a reference, you'll get a runtime error.
 
-  dp->type();
-  dpr->type();
-  bp1->type();
-  bp1->Base::type();
+  // Base *base_private = derived_private;                            // ERROR: Cannot implicitly upcast from 'DerivedPrivate*' to 'Base*' due to private inheritance
+  // Base* base_private = static_cast<Base*>(derived_private);        // ERROR: Cannot upcast from 'DerivedPrivate*' to 'Base*' using static_cast due to private inheritance
+
+  derived_public->type();                    // DerivedPublic           | Virtual table lookup
+  derived_public->Base::type();              // Base                    | Bypass the virtual table lookups, You can call the base implementation this way
+  derived_public->DerivedPublic::type();     // DerivedPublic           | Bypass the virtual table lookups
+
+  derived_private->type();          // Base           | type() is exposed ONLY because we publicly overrode it and it calls its base implementation
+  // derived_private->Base::type(); // ERROR          | Base is privately extended
+
+  base->type();                     // DerivedPublic  | Virtual table lookup, even though it's a Base*, it points to a DerivedPublic* object
+  base->Base::type();               // Base           | Bypass the virtual table lookups, You can call the base implementation this way
+
+  delete derived_public;
+  delete derived_private;
 
   return 0;
 }
 ```
+
+::::info
+**Size of a struct** & **Size of a class**
+
+The size of a `struct` or `class` that has no data members is `0`. However, a **unique address** must be assigned to it if we use this empty `struct`.
+In C++, it gets the size of `1`.
+
+If a `Derived` class inherits an empty `Base`, the size of the `Derived` class will be the size of all it's members aligned to the size largest primitive member. (The member with the greatest alignment requirement)
+
+You can also use `[[no_unique_address]]` to tell the compiler that we don't need a **unique address** for this member.
+The `unique_ptr` example above demonstraits a good usage of this, `Deleter` overrides the `()` operator, it has no members and we don't want it to take up 
+any additional memory but we want it to be a member, which is why we used `[[no_unique_address]]`.
+
+```cpp
+#include <iostream>
+
+class Base {};
+
+class DerivedA : public Base {
+  int a;
+};
+
+class DerivedB {
+  int a;
+  Base base;
+};
+
+class DerivedC {
+  int a;
+  [[no_unique_address]] Base base;
+};
+
+int main() {
+  std::cout << sizeof(Base) << std::endl;
+  std::cout << sizeof(DerivedA) << std::endl;
+  std::cout << sizeof(DerivedB) << std::endl;
+  std::cout << sizeof(DerivedC) << std::endl;
+  return 0;
+}
+```
+::::
+
+## Multiple inheritance
+
+In the example below, both `Bird` & `FlyingAnimal` have a virtual method `fly()`. This compiles successfully but if `Eagle::fly()` is called the program 
+throws an error `request for member 'fly' is ambiguous`.
+
+If `Eagle` overrides `fly()` there will be no error because `fly()` will not be ambiguous anymore.
+
+```cpp
+#include <iostream>
+
+class Bird {
+public:
+  virtual void fly() {
+    std::cout << "Bird fly" << std::endl;
+  };
+};
+
+class FlyingAnimal {
+public:
+  virtual void fly() {
+    std::cout << "FlyingAnimal fly" << std::endl;
+  };
+};
+
+class Eagle : public Bird, public FlyingAnimal {
+// public:
+//   void fly() override {
+//     std::cout << "Eagle fly" << std::endl;
+//   };
+};
+
+int main() {
+  Eagle e;
+
+  // Uncomment this line
+  // e.fly(); // Ambiguous | Both Bird & FlyingAnimal have the method fly.
+
+  return 0;
+}
+```
+
+## References & citations
+  * **Hands-On Design Patterns with C++**, Chapter 2, ("Inheritance & polymorphism"). **Fedor G. Pikus**.
