@@ -1,0 +1,188 @@
+# Lambda functions
+
+## Init capture (C++14)
+
+A capture with an initializer, called *init-capture*, acts as if it declares and explicitly captures a variable declared with type specifier auto and the same initializer, whose declarative region is the body of the lambda expression (that is, it is not in scope within its initializer), except that:
+
+* If the capture is by-copy, the introduced non-static data member of the closure object is another way to refer to that variable;
+    * in other words, the source variable does not actually exist, and the type deduction via auto and the initialization are applied to the non-static data member;
+* If the capture is by-reference, the reference variable's lifetime ends when the lifetime of the closure object ends.
+
+This is used to capture move-only types with a capture such as x = std::move(x).
+
+This also makes it possible to capture by const reference, with &cr = std::as_const(x) or similar.
+
+```cpp
+#include <memory>
+#include <utility>
+
+int main() {
+  int x = 4;
+
+  auto y = [&r = x, x = x + 1]() -> int
+  {
+    r += 2;
+    return x * x;
+  }(); // updates ::x to 6 and initializes y to 25.
+
+  auto ptr = std::make_unique<int>(42);
+
+  // Move the unique_ptr into the lambda
+  auto lambda = [p = std::move(ptr)]() {
+    return *p;
+  };
+
+  return 0;
+}
+
+```
+
+## Default-Constructible Lambdas (C++20)
+
+Historically, lambdas had no default constructor. If you wanted to use a lambda as a comparator in a `std::set` or `std::map`, you had to pass the lambda instance to the container's constructor.
+
+In C++20, stateless lambdas (lambdas with an empty capture list []) are now default-constructible and assignable.
+
+```cpp
+#include <set>
+
+int main() {
+  auto cmp = [](int a, int b) { return a > b; };
+
+  // C++17
+  std::set<int, decltype(cmp)> mySet1(cmp); 
+
+  // C++20
+  std::set<int, decltype([](int a, int b) { return a > b; })> mySet2;
+
+  return 0;
+}
+```
+
+## The `mutable` Keyword
+
+By default, the `operator()` of a lambda's underlying class is `const`. This means if you capture a variable by value, you cannot modify it inside the lambda. To fix this, mark the lambda as `mutable`.
+
+```cpp
+#include <iostream>
+
+int main() {
+
+  int counter = 0;
+
+  // Will fail to compile without 'mutable'
+  auto increment = [counter]() mutable {
+    counter++; // Mutating the local copy
+    return counter;
+  };
+
+  std::cout << increment() << std::endl;
+
+  std::cout << counter << std::endl; // not modified (still 0)
+
+  return 0;
+}
+```
+
+## Generic Lambdas & Template Lambdas (C++14 / C++20)
+
+C++14 allowed you to use `auto` in parameters, creating a generic lambda (essentially a template under the hood).
+
+```cpp
+int main() {
+
+  // C++14 Generic Lambda
+  auto print = [](const auto& x) { std::cout << x << '\n'; };
+
+  return 0;
+}
+```
+
+However, C++14 didn't give you a way to ensure two parameters were of the same type, or to access the template type easily. C++20 fixed this by adding explicit template parameters:
+
+```cpp
+int main() {
+
+  // C++20 Template Lambda
+  auto add = []<typename T>(T a, T b) {
+      return a + b; 
+  };
+
+  // add(5, 4.5); // Compiler Error! Types must match.
+
+  return 0;
+}
+```
+
+## Capturing this and *this (The Pitfall & The Fix)
+
+`[=]` looks like it captures data by value. It doesn't. It captures the `this` pointer by value. If the `Object` is destroyed, calling that lambda will crash.
+
+```cpp
+#include <iostream>
+
+struct Object {
+  int data = 0;
+  auto get_lambda() {
+    return [=]() { std::cout << data; }; // data may be destroyed so.. use after free.
+  }
+};
+```
+
+Capture `[*this]` by value. This creates a **copy of the entire object** at the moment the lambda is created, making it safe to use asynchronously or outlive the original object.
+
+```cpp
+#include <iostream>
+
+struct Object {
+  int data = 0;
+  auto get_lambda() {
+    return [*this]() { std::cout << data; }; // data may be destroyed so.. use after free.
+  }
+};
+```
+
+*NOTE: Never copy the entire object unless you know what you're doing. It could be a **very** expensive operation*
+
+## Convert to Plain Function Pointers
+
+If a lambda has no captures `[]`, the compiler automatically generates an implicit conversion operator to a plain, old-school C-style function pointer. This is useful when interacting with legacy C APIs.
+
+```cpp
+#include <iostream>
+
+void legacy_c_api(void (*callback)(int)) {
+  callback(10);
+}
+
+int main() {
+  // Works perfectly because there are no captures
+  legacy_c_api([](int x) { std::cout << x; });
+}
+```
+
+## Immediately Invoked Function Expressions (IIFE)
+
+A trick you've used in javascript if you're coming from there like I am.
+
+```cpp
+const std::string something = []() {
+  if (/* condition */) return "Success";
+  else if (/* condition */) return "Warning";
+  return "Failure";
+}(); // Notice the () at the end that executes it immediately
+```
+
+## Executing Compile-Time Code with constexpr (C++17)
+
+Lambdas are implicitly `constexpr` if their operation allows it. You can also explicitly enforce it. This lets you use lambdas for complex compile-time calculations.
+
+```cpp
+constexpr auto square = [](int n) { return n * n; };
+static_assert(square(4) == 16, "Compiled at compile-time!");
+```
+
+## References & citations
+
+* **cppreference.com**: [https://en.cppreference.com/cpp/language/lambda](https://en.cppreference.com/cpp/language/lambda)
+* **Hands-On Design Patterns with C++**, Chapter 2, Page 45. **Fedor G. Pikus**.

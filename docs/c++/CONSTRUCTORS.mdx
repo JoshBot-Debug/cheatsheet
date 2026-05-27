@@ -1,0 +1,208 @@
+---
+toc_min_heading_level: 2
+toc_max_heading_level: 4
+---
+
+# Constructors
+
+## Initialization
+
+There are 3 ways to initialize in C++
+* Copy initialization
+* Direct initialization
+* List initialization
+
+List initialization should always be the prefered method of initializing in C++.
+
+### Copy initialization
+
+**Copy-initialization is performed in the following situations**:
+
+1. When a named variable (automatic, static, or thread-local) of a non-reference type `T` is declared with the initializer consisting of an equals sign followed by an expression.
+2. (until C++11) When a named variable of a scalar type `T` is declared with the initializer consisting of an equals sign followed by a brace-enclosed expression (Note: as of C++11, this is classified as list initialization, and narrowing conversion is not allowed).
+3. When passing an argument to a function by value.
+4. When returning from a function that returns by value.
+5. When throwing or catching an exception by value.
+6. As part of aggregate initialization, to initialize each element for which an initializer is provided.
+
+#### 1. Named variable initialized with an equals sign
+
+This is the most common form of copy-initialization.
+```cpp
+#include <iostream>
+
+class Int {
+private:
+  int m_value;
+
+public:
+  Int(int value): m_value(value) {};
+
+  void print() { std::cout << m_value << std::endl; }
+};
+
+int main() {
+
+  // Copy initialization
+  Int a = 10;
+
+  a.print();
+
+  return 0;
+}
+```
+
+#### 2. (Until C++11) Scalar initialized with an equals sign and a brace-enclosed expression
+
+Before C++11, writing `= {expr}` for basic scalar types (like `int`, `double`, `pointer`) fell under copy-initialization rules. (In modern C++11 and later, this is routed through list-initialization rules to prevent precision loss/narrowing but it still does a copy so it's copy-list-initialization).
+
+* `Int` `a = {10}`; contains an equals sign, it retains its conceptual "copy" nature. The compiler restricts it from using any constructor marked as `explicit`
+* `Int a{10};`, being direct initialization, is fully permitted to use `explicit` constructors.
+
+```cpp
+#include <iostream>
+
+class Int {
+private:
+  int m_value;
+
+public:
+  Int(int value): m_value(value) {};
+
+  void print() { std::cout << m_value << std::endl; }
+};
+
+int main() {
+  Int a = {3};      // works
+  // Int a = {3.14};   // ERROR: prevents narrowing because it's list-initialization rules
+  return 0;
+}
+```
+
+::::tip
+Try making `class Int` constructor `explicit` and run the example.
+
+You will have to make the initialization explicit `Int a = Int{3};`
+::::
+
+#### 3. Passing an argument to a function by value
+
+When a function expects an object by value, and you pass it a raw value (like an `int`), the compiler uses copy-initialization to construct the function parameter right on the call stack.
+
+```cpp
+#include <iostream>
+
+class Int {
+private:
+  int m_value;
+public:
+  Int(int value) : m_value(value) {}
+  void print() { std::cout << m_value << std::endl; }
+};
+
+// Expects an 'Int' object passed by value
+void display(Int obj) {
+  obj.print();
+}
+
+int main() {
+  // The compiler copy-initializes 'obj' using Int(100).
+  display(100); 
+  return 0;
+}
+```
+
+This behaviour may not be prefered in many cased, if so, make the `Int` consturctor `explicit`
+
+#### 4. Returning from a function that returns by value
+
+When a function returns a type by value, the temporary return object initialized at the return statement is copy-initialized from the expression provided.
+
+```cpp
+#include <iostream>
+
+class Int {
+private:
+  int m_value;
+public:
+  Int(int value) : m_value(value) {}
+  void print() { std::cout << m_value << std::endl; }
+};
+
+// Returns an 'Int' object by value
+Int createInt() {
+  // The return value is copy-initialized from the integer 500
+  return 500; 
+}
+
+int main() {
+  Int a = createInt();
+  a.print();
+  return 0;
+}
+```
+
+::::note
+Modern C++ compilers heavily optimize this specific situation using **Named Return Value Optimization** (**NRVO**) to skip the actual copy/move copy operation, but conceptually and syntactically, it remains governed by copy-initialization
+::::
+
+#### 5. Throwing or catching an exception by value
+
+When you throw an exception object, the executable constructs a temporary exception object using copy-initialization. Similarly, if you catch the exception by value (though catching by reference is preferred), it gets copy-initialized again into the catch block.
+
+```cpp
+#include <iostream>
+
+class IntException {
+public:
+  int m_code;
+  IntException(int code) : m_code(code) {}
+};
+
+int main() {
+  try {
+    // The thrown temporary object is copy-initialized from '404'
+    throw 404; 
+  } 
+  catch (IntException ex) { // 'ex' is copy-initialized from the thrown exception
+    std::cout << "Caught error code: " << ex.m_code << std::endl;
+  }
+  return 0;
+}
+```
+
+#### 6. As part of aggregate initialization
+
+An aggregate (like a plain old struct or array) can be initialized with a braced list. For every element you explicitly provide an expression for, that specific element is copy-initialized.
+
+```cpp
+#include <iostream>
+
+class Int {
+private:
+  int m_value;
+public:
+  Int(int value) : m_value(value) {}
+  void print() { std::cout << m_value << std::endl; }
+};
+
+struct IntCollection {
+  Int first;
+  Int second;
+};
+
+int main() {
+  // Aggregate initialization.
+  // 'first' is copy-initialized with 1, 'second' is copy-initialized with 2.
+  IntCollection collection = {1, 2}; 
+
+  collection.first.print();
+  collection.second.print();
+  return 0;
+}
+```
+
+## References & citations
+
+* **copy-initialization**: [https://en.cppreference.com/cpp/language/copy_initialization](https://en.cppreference.com/cpp/language/copy_initialization)
+* **copy-list-initialization**: [https://en.cppreference.com/cpp/language/list_initialization](https://en.cppreference.com/cpp/language/list_initialization#Copy-list-initialization)

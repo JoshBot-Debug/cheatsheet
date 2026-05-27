@@ -272,11 +272,8 @@ graph TD;
     S1[Speed] --> E
     S2[Speed] --> F
 
-    style S1 fill:#ffcccc,stroke:none
-    style S2 fill:#ffcccc,stroke:none
-    style BE fill:#d4edda,stroke:none
-    style F fill:#d4edda,stroke:none
-    style E fill:#d4edda,stroke:none
+    class S1,S2 speedNode;
+    class BE,E,F birdNode;
 ```
 
 ### With virtual inheritance
@@ -290,10 +287,7 @@ graph TD
     S1[Speed] --> E
     S1[Speed] --> F
 
-    style S1 fill:#d4edda,stroke:none
-    style F fill:#d4edda,stroke:none
-    style E fill:#d4edda,stroke:none
-    style BE fill:#d4edda,stroke:none
+    class S1,BE,E,F birdNode;
 ```
 
 ```cpp

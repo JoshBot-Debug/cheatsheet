@@ -37,3 +37,22 @@
   background-color: #1e1e1e;
   padding: 10px;
 }
+
+[data-theme='light'] .speedNode rect {
+  fill: #ffcccc !important;
+  stroke: none !important;
+}
+[data-theme='light'] .birdNode rect {
+  fill: #d4edda !important;
+  stroke: none !important;
+}
+
+/* --- Dark Theme Colors --- */
+[data-theme='dark'] .speedNode rect {
+  fill: #5a2a2a !important; /* Darker red/pink */
+  stroke: none !important;
+}
+[data-theme='dark'] .birdNode rect {
+  fill: #1b4332 !important; /* Darker green */
+  stroke: none !important;
+}
