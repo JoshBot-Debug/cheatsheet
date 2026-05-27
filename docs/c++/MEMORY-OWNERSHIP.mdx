@@ -1,0 +1,119 @@
+# Memory Ownership
+
+Memory ownership is important, it must at all times be clear who (or rather what object) owns a certain resource. Consider the following situation:
+
+```cpp
+class Resource {};
+
+void operation(Resource* r) {};
+
+Resource* createResource();
+
+int main() {
+  Resource* data = createResource();
+  operation(data);
+  delete data;
+}
+```
+
+In the example above, who owns the `Resource`?
+* Should we call the `delete` operator to free the resource?
+  * Did `operation()` take ownership of the pointer?
+  * Did `operation()` only mutate data?
+  * Did `createResource()` transfer ownership?
+
+If we call the `delete` operator, how can we be sure that data was created with `new`? We might end up with currupted memory.
+
+## Raw pointers & references
+
+Raw pointers and reference are used to denote *non-ownership*. While this is not enforced by the language, it's something the C++ community has followed for years. It's become part of the idiom.
+
+With that in mind, in the example below, both `operation_a` and `operation_b` do not take ownership of the `Resource`.
+```cpp
+class Resource {};
+
+void operation_a(Resource* r) {};
+void operation_b(Resource& r) {};
+
+Resource* createResource();
+
+int main() {
+  Resource* data = createResource();
+  operation_a(data);
+  operation_b(data);
+  delete data;
+}
+```
+## Unique pointers | Shared pointers | Weak pointers
+
+With C++11, smart pointers were introduced into the standard library.
+
+**Unique pointer**
+  *  `std::unique_ptr<Resource> ptr = std::make_unique<Resource>(...args);`
+  *  Exclusive ownership.
+  *  Cannot copy, only move
+    
+**Shared pointer**
+  *  `std::shared_ptr<Resource> ptr = std::make_shared<Resource>(...args);`
+  *  Shared ownership
+  *  Atomic reference counting
+  *  Slower performance
+  *  Generally used to hide the real problem, i.e, memory ownership.
+  *  Can copy and move
+    
+**Weak pointer**
+  * `std::weak_ptr<Resource> ptr = shared_ptr;`
+  * Non-owning observer. It holds a reference to an object managed by a std::shared_ptr but does not contribute to the reference count.
+  * Prevents cyclic dependencies (circular references) that cause memory leaks.
+  * Cannot access the resource directly; it must be temporarily converted back into a std::shared_ptr using .lock() to check if the resource still exists.
+
+```cpp
+class Resource {};
+
+void operation_a(Resource* r) {};
+void operation_b(Resource& r) {};
+
+std::unique_ptr<Resource> createResource();
+
+int main() {
+  std::unique_ptr<Resource> resource = createResource();
+  operation_a(resource.data());
+  operation_b(*resource);
+}
+```
+In the example above, memory ownership is clear.
+* `main()` Owns the `Resource`.
+* `createResource()` The caller takes ownership of the resource that is created.
+* `operation_a()` & `operation_b` Do not take ownership of the memory.
+* No need to clean up, `std::unique_ptr` handles that.
+
+## Circular references (cyclic dependencies)
+
+`std::shared_ptr` has one well known problem. Everytime a copy of the `std::shared_ptr` is created, internally, a reference count goes up. When the `shared_ptr` is out of scope or otherwise released, 
+the reference count goes down. When there are zero references, the memory of the object in the `std::shared_ptr` is released.
+
+If Object A owns Object B via a `std::shared_ptr`, and Object B needs to point back to Object A, using another `std::shared_ptr` creates a **cycle** where neither can ever be deleted. Replacing one side with a `std::weak_ptr` solves this.
+
+## Stack
+
+The best kind of memory ownership. Stack allocation, it automatically frees that memory when it goes out of scope.
+
+When you allocate memory on the stack, it works via a strict **Last-In**, **First-Out** (**LIFO**) mechanism managed directly by the CPU's stack pointer.
+
+The only limitation is the size of the stack.
+
+```cpp
+class Resource {};
+
+void operation_a(Resource* r) {};
+void operation_b(Resource& r) {};
+
+int main() {
+  Resource resource;
+  operation_a(&resource);
+  operation_b(resource);
+}
+```
+
+## References & citations
+* Hands-On Design Patterns with C++, Chapter 3, ("Memory Ownership"). Fedor G. Pikus.
