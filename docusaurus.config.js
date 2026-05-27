@@ -67,6 +67,11 @@ const config = {
         docsRouteBasePath: "/",
       },
     ],
+    [
+      require.resolve("@docusaurus/theme-mermaid"),
+      /** @type {import("@docusaurus/theme-mermaid").ThemeConfig} */
+      {}
+    ]
   ],
 
   themeConfig:
