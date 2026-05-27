@@ -258,5 +258,147 @@ int main() {
 }
 ```
 
+## Virtual inheritance
+
+Virtual inheritance is a technique that ensures a nested base class is only inherited once by grandchild derived classes, effectively resolving the ambiguities caused by multiple inheritance.
+
+### Without virtual inheritance
+This diagram shows the classic "Diamond Problem" where `Speed` is duplicated, resulting in two separate instances inside `BaldEagle`.
+```mermaid
+graph TD;
+    BE[BaldEagle]
+    E[Eagle] --> BE
+    F[Flyable] --> BE
+    S1[Speed] --> E
+    S2[Speed] --> F
+
+    style S1 fill:#ffcccc,stroke:none
+    style S2 fill:#ffcccc,stroke:none
+    style BE fill:#d4edda,stroke:none
+    style F fill:#d4edda,stroke:none
+    style E fill:#d4edda,stroke:none
+```
+
+### With virtual inheritance
+This diagram shows how virtual inheritance uses pointers to reference a single, **shared instance** of `Speed` at the bottom of the hierarchy.
+
+```mermaid
+graph TD
+    BE[BaldEagle]
+    E[Eagle] --> BE
+    F[Flyable] --> BE
+    S1[Speed] --> E
+    S1[Speed] --> F
+
+    style S1 fill:#d4edda,stroke:none
+    style F fill:#d4edda,stroke:none
+    style E fill:#d4edda,stroke:none
+    style BE fill:#d4edda,stroke:none
+```
+
+```cpp
+#include <iostream>
+
+class Speed {
+public:
+  int speed = 42;
+  virtual ~Speed() = default;
+  virtual void move() { std::cout << "Speed move()" << std::endl; }
+};
+
+// Use "virtual" inheritance to get a shared instance of Speed
+class Flyable : virtual public Speed {
+public:
+  virtual ~Flyable() = default;
+  virtual void move() { std::cout << "Flyable move()" << std::endl; }
+};
+
+class Eagle : virtual public Speed {
+public:
+  virtual ~Eagle() = default;
+  virtual void move() { std::cout << "Eagle move()" << std::endl; }
+};
+
+// Child inherits from both Parents
+// Both Eagle & Flyable have a shared instance of Speed because of virtual inheritance
+class BaldEagle : public Eagle, public Flyable {
+public:
+  // Resolve method ambiguity explicitly
+  void move() override {
+    Eagle::move();
+  }
+};
+
+int main() {
+  BaldEagle o;
+  o.speed = 99; 
+  o.move(); 
+
+  std::cout << "Shared Data: " << o.speed << std::endl;
+
+  return 0;
+}
+```
+
+## Final inheritance
+
+Final inheritance refers to preventing a class from being used as a base class for any further inheritance. It is the definitive way to say, *"This family tree ends here."*
+
+`final` can use used to restrict subtype polymorphism
+
+There are two places you can use the `final` keyword:
+  * Prevent class inheritance
+  * Prevent method overloading
+
+### Preventing Class Inheritance (`final` Class)
+When you apply final to a class definition, any attempt to derive a new class from it will trigger a compile-time error.
+```cpp
+#include <iostream>
+
+class Base {};
+
+class Anchor final : public Base {
+public:
+    void log() { std::cout << "Anchor processing..." << std::endl; }
+};
+
+// ERROR: Compile-time error! 'SubAnchor' cannot inherit from 'final' 'Anchor'
+// class SubAnchor : public Anchor {};
+```
+
+### Preventing Method Overriding (final Method)
+You can also use `final` on a specific virtual function to allow inheritance of the class, but prevent that specific method from being overridden further down the chain.
+
+```cpp
+class Device {
+public:
+    virtual void boot() { std::cout << "Device booting..." << std::endl; }
+};
+
+class Laptop : public Device {
+public:
+    // Laptop overrides boot, but seals it for any future sub-classes
+    void boot() override final { 
+        std::cout << "Laptop secure booting..." << std::endl; 
+    }
+};
+
+class GamingLaptop : public Laptop {
+public:
+    // ERROR: Compile-time error! Cannot override 'final' function 'Laptop::boot'
+    // void boot() override { std::cout << "RGB Booting..." << std::endl; }
+};
+```
+
+### The Hidden Benefit: Devirtualization (Performance)
+Beyond making your code structurally safer, `final` provides a great optimization hint to the C++ compiler called **devirtualization**.
+
+Normally, when you call a virtual function, the program has to look up the function address at runtime using a **Vtable** (**Virtual Table**) pointer. This adds a tiny bit of latency and prevents the compiler from performing inline optimizations.
+
+**When a class or method is marked final:**
+* The compiler realizes at compile-time that no other class can ever override this method.
+* It completely bypasses the Vtable lookup mechanism.
+* It converts the expensive dynamic dispatch into a standard, lightning-fast direct function call (and may even inline the code entirely).
+
 ## References & citations
   * **Hands-On Design Patterns with C++**, Chapter 2, ("Inheritance & polymorphism"). **Fedor G. Pikus**.
