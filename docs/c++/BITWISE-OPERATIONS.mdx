@@ -16,6 +16,7 @@ If you're working in powers of two you can make use of bitwise operations to **a
 This works only if **n** is a **power of two**
 ```cpp
 #include <bit>
+#include <cstdint>
 
 // Suppose we want to multiply/divide/modulo by 16
 constexpr uint64_t N = 16;       // The power of two value
@@ -23,9 +24,7 @@ constexpr uint64_t N = 16;       // The power of two value
 static_assert(std::has_single_bit(N), "N must be a power of two");
 
 template <uint64_t T>
-concept PowerOfTwo = requires (T n) {
-  std::has_single_bit(n);
-};
+concept PowerOfTwo = std::has_single_bit(T);
 
 // divide: a / N
 uint64_t divide(uint64_t a)

@@ -5,6 +5,8 @@
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
 import { themes as prismThemes } from "prism-react-renderer";
+import math from "remark-math";
+import katex from "rehype-katex";
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -15,7 +17,7 @@ const config = {
   favicon: "img/favicon.ico",
 
   markdown: {
-    mermaid: true
+    mermaid: true,
   },
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -53,6 +55,8 @@ const config = {
           sidebarPath: "./sidebars.js",
           editUrl: "https://github.com/JoshBot-Debug/cheatsheet/blob/main",
           routeBasePath: "/",
+          remarkPlugins: [math],
+          rehypePlugins: [katex],
         },
         theme: {
           customCss: "./src/css/custom.css",
@@ -74,8 +78,14 @@ const config = {
     [
       require.resolve("@docusaurus/theme-mermaid"),
       /** @type {import("@docusaurus/theme-mermaid").ThemeConfig} */
-      {}
-    ]
+      {},
+    ],
+  ],
+  stylesheets: [
+    {
+      href: "/katex/katex.min.css",
+      type: "text/css",
+    },
   ],
 
   themeConfig:
@@ -110,12 +120,12 @@ const config = {
               },
               {
                 label: "C++",
-                to: "/category/c"
+                to: "/category/c",
               },
               {
                 label: "Web",
-                to: "/category/web"
-              }
+                to: "/category/web",
+              },
             ],
           },
           {

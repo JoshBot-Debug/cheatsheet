@@ -67,11 +67,18 @@ It addresses critical real-world edge cases:
 #include <cerrno>
 #include <cstdint>
 #include <cstdlib>
+#include <bit>
 
 constexpr std::size_t ALIGNMENT = 4096;
 
-static inline std::size_t round_up(std::size_t n, std::size_t align) {
-  return ((n + align - 1) / align) * align;
+template <uint64_t T>
+concept PowerOfTwo = std::has_single_bit(T);
+
+template <uint64_t N>
+requires PowerOfTwo<N>
+uint64_t roundUp(uint64_t value)
+{
+  return (value + N - 1) & ~(N - 1);
 }
 ```
 
@@ -121,7 +128,7 @@ void write_direct(const std::string& filename, const void* data, std::size_t siz
     throw std::runtime_error("Failed to set O_DIRECT flag: " + std::string(std::strerror(errno)));
   }
 
-  std::size_t write_size = round_up(size, ALIGNMENT);
+  std::size_t write_size = roundUp<ALIGNMENT>(size);
 
   if (::posix_fallocate(fd, 0, static_cast<off_t>(write_size)) != 0) {
     ::close(fd);
