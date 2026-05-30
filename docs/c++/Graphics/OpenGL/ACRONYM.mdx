@@ -1,0 +1,19 @@
+# Acronyms
+
+| Object Name | Acronym | Purpose |
+| :--- | :--- | :--- |
+| **Vertex Array Object** | `VAO` | Stores the links between VBO/EBO bindings and Shader attribute configurations. Acts as the execution blueprint wrapper for a mesh. |
+| **Vertex Buffer Object** | `VBO` | A generic memory block target containing raw array data (e.g., Positions, Normals, Colors, UVs) sent to the vertex shader. |
+| **Element Buffer Object** | `EBO` / `IBO` | Stores index maps determining the sequence in which vertices are assembled into geometric primitives (Triangles, Lines). |
+| **Framebuffer Object** | `FBO` | A user-defined, off-screen rendering target wrapper that allows you to render your scene directly into textures instead of the screen display. |
+| **Renderbuffer Object** | `RBO` | An optimized, write-only data image storage buffer. Used inside FBOs for high-speed hardware tasks like Depth and Stencil testing. |
+| **Texture Object** | `TEX` | Manages 1D, 2D, 3D, or Cube-map image data arrays along with sampling states (Filtering, Mipmapping, Texturing wrap settings). |
+| **Shader Object** | `Shader` | Holds a single compiled stage of GLSL source binary (e.g., Vertex, Fragment, Geometry, Tessellation, or Compute). |
+| **Program Object** | `Program` | A collection of multiple attached Shader Objects linked together to form a complete execution pipeline handle (`glUseProgram`). |
+| **Program Pipeline Object** | `PPO` | Allows mixing and matching individual separate shader stages from completely different programs on the fly without a full re-link penalty. |
+| **Transform Feedback Object**| `TFO` | Records the raw vertex data streams shooting out of the geometry pipeline backend before they ever hit the rasterizer. |
+| **Sampler Object** | `Sampler` | Separates texturing filtering states (Linear, Nearest, Repeat) from the underlying texture image allocation data itself. |
+| **Query Object** | `Query` | Measures asynchronous hardware execution milestones (e.g., GPU time elapsed, primitive occlusion count, fragments passed). |
+| **Sync Object** | `Sync` / `Fence` | Creates an execution fence sync token to synchronize commands between the asynchronous CPU driver thread and the GPU processing cores. |
+| **Pixel Buffer Object**| `PBO` | Enables asynchronous, non-blocking texture uploads and screen read-backs using background DMA channels. |
+| **Texture Buffer Object**| `TBO` | Allows shaders to treat a massive, flat memory buffer as a 1D texture array bypass limit restrictions. |

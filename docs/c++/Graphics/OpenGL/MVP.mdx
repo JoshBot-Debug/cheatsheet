@@ -1,0 +1,13 @@
+
+# Model View Projection (MVP)
+
+To transform 3D space onto your 2D screen, vertices pass through three core max_vertices
+$$
+Vertex_{clip} = P \times V \times M \times Vertex_{local}
+$$
+
+* **Model Matrix ($M$)**: Moves vertices from Local Object space to World Space (Translation, Rotation, Scale).
+* **View Matrix ($V$)**: Moves the world into camera perspective. Defines the positions of Camera Space.
+* **Projection Matrix ($P$)**: Projects 3D vectors to 2D normalized screen dimensions (`-1.0` to `1.0`).
+  * **Perspective**: Matrix for 3D realism where objects look smaller farther away (`glm::perspective`).
+  * **Orthographic**: Matrix for 2D planes/UI components where distance doesn't affect scale (`glm::ortho`).

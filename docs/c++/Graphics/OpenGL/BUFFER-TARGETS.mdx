@@ -1,0 +1,338 @@
+# Buffer Targets
+
+### 1. GL_ARRAY_BUFFER (VBO)
+* **Purpose**: Vertex attributes (Positions, UVs, Normals, Colors).
+* **Why use it**: This is the baseline entry point for geometry. You use it to stream raw vertex data layout arrays from the CPU into the **GPU's high-speed VRAM** so the vertex shader can process them.
+* **Example**: Standard | drawn via `glDrawArrays`
+
+### 2. GL_ELEMENT_ARRAY_BUFFER (EBO / IBO)
+* **Purpose**: Vertex array indices.
+* **Why use it**: Indexed rendering. Instead of duplicating vertex data for shared corners (like a cube where vertices meet), you list unique vertices once in an array buffer and use this target to define the triangle construction sequence using lightweight integer lookups.
+* **Example**: Standard | drawn via `glDrawElements`
+
+### 3. GL_UNIFORM_BUFFER (UBO)
+* **Purpose**: Uniform block storage.
+* **Why use it**: Performance scaling for shared global values. If you have **50** different shader programs that all need access to the same `View` and `Projection` matrices, you upload them once to a `UBO` instead of executing **50** individual CPU-stalling `glUniformMatrix4fv` calls.
+
+```cpp
+GLuint ubo;
+glGenBuffers(1, &ubo);
+glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2, nullptr, GL_STREAM_DRAW);
+// binding = 0
+glBindBufferBase(GL_UNIFORM_BUFFER, 0, ubo);
+
+// Update data per frame (GL_STREAM_DRAW)
+glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), &viewMatrix[0][0]);
+```
+```glsl
+layout (std140, binding = 0) uniform Scene {
+  mat4 view;
+  mat4 projection;
+};
+```
+
+::::note
+**`glBufferSubData` & per frame updates**
+* **High speed memory**: When you initially allocate your buffer, use `GL_STREAM_DRAW` instead of `GL_STATIC_DRAW` or `GL_DYNAMIC_DRAW`. This acts as a hint to the driver that the data will be modified frequently and read immediately.
+* **Batch data**: Calling glBufferSubData once for one giant chunk of data is much faster than calling it hundreds of times for tiny individual objects in a single frame.
+* For best performance, consider using **Persistent Mapped Buffers** (`GL_MAP_PERSISTENT_BIT`) introduced in OpenGL 4.4
+::::
+
+### 4. GL_SHADER_STORAGE_BUFFER (SSBO)
+* **Purpose**: Read-write storage for shaders.
+* **Why use it**: Massive capacity data streaming with write-back capabilities. Unlike `UBOs` (which are small and read-only), `SSBOs` can handle gigabytes of data and allow shaders to dynamically modify their contents. Perfect for large-scale particle physical systems or passing dynamically calculated light lists to a **forward+ renderer**.
+
+```cpp
+GLuint ssbo;
+glGenBuffers(1, &ssbo);
+glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Particle) * 10000, nullptr, GL_DYNAMIC_COPY);
+// binding = 1
+glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo);
+```
+
+```glsl
+struct Particle { vec4 position; vec4 velocity; };
+
+layout (std430, binding = 1) buffer Particles {
+  Particle particles[];
+};
+```
+
+### 5. GL_DRAW_INDIRECT_BUFFER
+* **Purpose**: Indirect draw command arguments.
+* **Why use it**: *GPU-Driven Rendering*. Instead of the CPU tracking what to draw every frame, the CPU tells the GPU once: "Read your draw parameters from this memory block." The GPU (via *compute shaders*) calculates object visibility, performs culling, and writes the final visible primitive counts straight into this buffer without talking back to the CPU.
+
+*NOTE: The example below is cpu-driven, to make it gpu-driven I would need to create a compute shader, bind the `dib` (indirect draw command) 
+to the compute shader, in the shader I would toggle which draw command to run by setting `instanceCount` to `0` or `1/2/3/...`*
+```cpp
+struct DrawElementsIndirectCommand {
+  GLuint count;         // Element/Index Count
+  GLuint instanceCount; // Instances to duplicate
+  GLuint firstIndex;    // EBO Offset
+  GLint  baseVertex;    // VBO Offset
+  GLuint baseInstance;  // Instancing Offset
+};
+
+std::vector<DrawElementsIndirectCommand> commands;
+
+GLuint dib;
+glGenBuffers(1, &dib);
+glBindBuffer(GL_DRAW_INDIRECT_BUFFER, dib);
+glBufferData(GL_DRAW_INDIRECT_BUFFER, commands.size() * sizeof(DrawElementsIndirectCommand), commands.data(), GL_DYNAMIC_DRAW);
+
+// Execute one (command at index 2)
+glDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(sizeof(DrawElementsIndirectCommand) * 2));
+
+// Execute many (from index 0 till the end)
+glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)0, commands.size(), 0);
+```
+
+### 6. GL_DISPATCH_INDIRECT_BUFFER
+* **Purpose**: Indirect compute dispatch commands.
+* **Why use it**: The exact compute shader equivalent of `GL_DRAW_INDIRECT_BUFFER`. If you are running a chain of compute operations (e.g., fluid particle simulation where a variable number of items pass criteria checks), the first compute shader can write the exact workgroup configuration dimensions $(X, Y, Z)$ into this buffer for the subsequent compute pass to fetch.
+
+```cpp
+struct DispatchCommand { GLuint groups_x; GLuint groups_y; GLuint groups_z; };
+
+DispatchCommand command{128,1,1};
+
+GLuint buffer;
+glGenBuffers(1, &buffer);
+glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, buffer);
+glBufferData(GL_DISPATCH_INDIRECT_BUFFER, sizeof(DispatchCommand), &command, GL_DYNAMIC_DRAW);
+
+// Executes computation directly from GPU-calculated sizing blocks
+glDispatchComputeIndirect(0);
+```
+
+#### `GL_DISPATCH_INDIRECT_BUFFER` is used less often in beginner projects so here is an explaination.
+
+`GL_DISPATCH_INDIRECT_BUFFER` is the compute-shader equivalent of indirect drawing.
+
+Normally, when you launch a compute shader, the CPU decides how many workgroups to run:
+```cpp
+glDispatchCompute(128, 1, 1);
+```
+Meaning:
+```text
+Run:
+128 workgroups in X
+1 workgroup in Y
+1 workgroup in Z
+```
+We chose those number on the CPU side.
+
+With indirect dispatch `glDispatchComputeIndirect(0);` the GPU reads the **workgroup counts** from a **buffer** instead. That buffer is bound to `GL_DISPATCH_INDIRECT_BUFFER`
+
+OpenGL expects exactly this layout:
+```cpp
+struct DispatchCommand {
+  GLuint num_groups_x;
+  GLuint num_groups_y;
+  GLuint num_groups_z;
+};
+
+DispatchCommand command{128,1,1};
+
+/// glGenBuffers, glBindBuffer & glBufferData with that command
+glBufferData(GL_DISPATCH_INDIRECT_BUFFER, sizeof(DispatchCommand), &command, GL_DYNAMIC_DRAW);
+
+// Dispatch a compute shader
+glDispatchComputeIndirect(0);
+```
+Equivalent to `glDispatchCompute(128, 1, 1);`
+
+You may think that this is still cpu-drivin and you would be correct. What makes this special is that the `DispatchCommand` can be bound to another compute shader 
+and be modified.
+
+Example pipeline:
+```text
+Compute Pass A:
+  Count visible particles atomicCounterIncrement(visibleCount)
+        ↓
+Writes:
+  num_groups_x = visibleCount / 64
+        ↓
+Compute Pass B:
+  Uses glDispatchComputeIndirect()
+        ↓
+GPU decides its own workload size
+```
+
+Now the CPU never calculates dispatch sizes.
+
+
+### 7. GL_ATOMIC_COUNTER_BUFFER
+* **Purpose**: Atomic counter storage.
+* **Why use it**: Why use any atomics? The same reason applies except this is exclusively for optimized for increment/decrement patterns. To avoid data races and have a lock free program.
+
+You could imagine, we would use `GL_ATOMIC_COUNTER_BUFFER` in the above example pipeline, *Compute Pass A* is a compute shader that needs to count visible particles. We 
+have to use an atomic counter here. `visibleCount` in the example above is atomic.
+
+```cpp
+GLuint initialValue = 0;
+
+GLuint atomicCounter;
+glGenBuffers(1, &atomicCounter);
+glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, atomicCounter);
+glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint), &initialValue, GL_DYNAMIC_COPY);
+
+// binding = 0
+glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, atomicCounter);
+```
+
+```glsl
+layout (binding = 0, offset = 0) uniform atomic_uint visibleCount;
+
+void main() {
+  if(visible) atomicCounterIncrement(visibleCount); 
+}
+```
+
+::::info
+`glBindBufferBase` is used to bind buffers to slots in the shader
+
+```cpp
+glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 0, atomicCounter);
+```
+Bind buffer "atomicCounter" to atomic counter binding slot 0, in the shader:
+```glsl
+layout(binding = 0, offset = 0) uniform atomic_uint visibleCount;
+```
+
+`glBindBuffer` is only for cpu access, if you want to `glBufferData` or `glMapBuffer` (updating buffer data)
+`glBindBufferBase` is for gpu access, if you want to bind something to a slot. [Refer this](https://docs.gl/gl4/glBindBufferBase)
+::::
+
+### 8. GL_TRANSFORM_FEEDBACK_BUFFER (legacy)
+**Legacy feature superseded by Compute Shaders**
+
+* **Purpose**: Transform feedback buffer capture.
+* **Why use it**: Bypassing pixel generation. Used when you want to use vertex, tessellation, or geometry shaders strictly as a data processing engine (e.g., simulating gravitational physics or cloth vertices). It catches the transformed vertices shooting out of the geometry backend and writes them directly back into a standard VBO, omitting the fragment shader.
+
+```cpp
+GLuint tfb;
+glGenBuffers(1, &tfb);
+glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, tfb);
+glBufferData(GL_TRANSFORM_FEEDBACK_BUFFER, sizeof(vertices), nullptr, GL_DYNAMIC_COPY);
+glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, tfb);
+
+// Capturing state execution sequence
+glBeginTransformFeedback(GL_POINTS);
+glDrawArrays(GL_POINTS, 0, 100);
+glEndTransformFeedback();
+```
+
+### 9. GL_TEXTURE_BUFFER
+* **Purpose**: Texture data buffer (TBO).
+* **Why use it**: Massive flat textures. Standard 2D textures have dimensions bounds (e.g., 16384x16384). If you need to map a huge, arbitrary structural table array to your texture shaders, you allocate a standard flat data buffer and use a TBO sampler wrapper inside your shader to access it linearly like a giant array lookup.
+
+```cpp
+struct LightData {
+  float position[4];
+  float color[4];
+};
+
+LightData lights[] = {
+  {
+    { 0.0f, 5.0f, 0.0f, 1.0f },
+    { 1.0f, 0.8f, 0.6f, 1.0f }
+  },
+  {
+    { 3.0f, 2.0f, 1.0f, 1.0f },
+    { 0.2f, 0.5f, 1.0f, 1.0f }
+  }
+};
+
+GLuint tbo, tboTex;
+glGenBuffers(1, &tbo);
+glBindBuffer(GL_TEXTURE_BUFFER, tbo);
+glBufferData(GL_TEXTURE_BUFFER, sizeof(lights), lights, GL_STATIC_DRAW);
+
+glGenTextures(1, &tboTex);
+glBindTexture(GL_TEXTURE_BUFFER, tboTex);
+// Note: GL_RGBA32F because of the data
+glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo); // Link buffer data array layout to texture wrapper
+```
+
+```glsl
+uniform samplerBuffer lightBuffer;
+
+struct Light { vec4 position; vec4 color; };
+
+void main() {
+  uint lightIndex = 1;
+
+  Light light;
+  light.position = texelFetch(lightBuffer, lightIndex * 2 + 0);
+  light.color    = texelFetch(lightBuffer, lightIndex * 2 + 1);
+
+  vec3 color = light.color.rgb;
+}
+```
+
+Texture buffers are often used for:
+```text
+Large material tables
+Animation matrices
+Skinning data
+Light lists
+Terrain metadata
+Particle attributes
+GPU lookup tables
+```
+
+### 10. GL_COPY_READ_BUFFER & GL_COPY_WRITE_BUFFER
+* **Purpose**: Agnostic targets for memory block duplication.
+* **Why use it**: Asynchronous memory transfers. When copying data inside memory blocks directly on the GPU (e.g., copying vertex physics calculations into a rendering mesh `VBO`), you bind the source to `COPY_READ` and destination to `COPY_WRITE`. This prevents binding state contamination on your primary asset arrays (`GL_ARRAY_BUFFER`).
+
+```cpp
+glBindBuffer(GL_COPY_READ_BUFFER, sourceVBO);
+glBindBuffer(GL_COPY_WRITE_BUFFER, destinationVBO);
+
+// Copy 1024 bytes directly across hardware lanes without CPU stalls
+glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, 1024);
+```
+
+### 11. GL_PIXEL_PACK_BUFFER & GL_PIXEL_UNPACK_BUFFER
+* **Purpose**: PBO operations (Packing = Read from GPU / Unpacking = Write to GPU).
+* **Why use it**: Asynchronous texture mapping and screenshot streaming. Normally, calling glTexImage2D forces the CPU to sit still while data uploads to VRAM. By mapping a PBO as an intermediate waystation, you upload data to the PBO asynchronously, and the subsequent texture call runs instantaneously at pure DMA (Direct Memory Access) speeds.
+
+```cpp
+GLuint pbo;
+glGenBuffers(1, &pbo);
+glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+glBufferData(GL_PIXEL_UNPACK_BUFFER, width * height * 4, nullptr, GL_STREAM_DRAW);
+
+// Map pointer to write directly from CPU image library loaders
+void* ptr = glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+memcpy(ptr, imageData, width * height * 4);
+glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+
+glBindTexture(GL_TEXTURE_2D, textureID);
+// This call completes instantly because data transfers directly from PBO memory!
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+```
+
+### 12. GL_QUERY_BUFFER
+* **Purpose**: Asynchronous hardware profiling and query evaluation.
+* **Why use it**: Stopping CPU pipeline stalls during performance tracking. Normally, if you ask OpenGL for performance timing or occlusion counts (glGetQueryObjectuiv), the CPU must freeze and wait for the GPU to catch up. By binding a GL_QUERY_BUFFER, the query results are written straight into a GPU memory address asynchronously, letting your frame logic proceed undisturbed.
+
+```cpp
+GLuint qbo;
+glGenBuffers(1, &qbo);
+glBindBuffer(GL_QUERY_BUFFER, qbo);
+glBufferData(GL_QUERY_BUFFER, sizeof(GLuint), nullptr, GL_DYNAMIC_COPY);
+
+// Capture execution pipeline statistics
+glEndQuery(GL_TIME_ELAPSED);
+
+// Tell driver to copy query results directly into buffer memory layout block instead of returning to variable
+glGetQueryObjectuiv(queryID, GL_QUERY_RESULT, (GLuint*)0);
+```
+
+## Resources & citations
+* https://learnopengl.com
+* https://docs.gl/sl4/dot
