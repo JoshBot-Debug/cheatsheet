@@ -96,7 +96,7 @@ $$
 
 NDC to Clip space **Perspective Multiply**.
 $$
-\mathbf{v}_{clip} = \begin{bmatrix} nx*w \\ ny*w \\ nz*w \end{bmatrix}
+\mathbf{v}_{clip} = \begin{bmatrix} nx \cdot w \\ ny \cdot w \\ nz \cdot w \end{bmatrix}
 $$
 
 You've done this or copied it a million times:
@@ -107,6 +107,7 @@ vec3 ndc = clipPosition.xyz / clipPosition.w;
 
 ## Screen Space
 The actual pixel coordinates of your monitor/window (e.g., from `0` to `1920` on the X-axis, and `0` to `1080` on the Y-axis).
+* Viewport transform is implemented as a scale-and-bias shift to map the $[-1, 1]$ NDC cube to $[0, \text{width}]$ and $[0, \text{height}]$
 
 ## Forward pipeline
 
@@ -117,10 +118,10 @@ Start | Mesh Data | Initial Vertex | Local Space
 2 | Apply View Matrix | $\mathbf{v}_{v} = M_{view} \cdot \mathbf{v}_{w}$​ | View Space
 3 | Apply Projection Matrix | $\mathbf{v}_{c} = M_{proj} \cdot \mathbf{v}_{v}$​ | Clip Space
 4 | Perspective Divide (GPU) | $\mathbf{v}_{ndc} = \mathbf{v}_{c}.xyz / \mathbf{v}_{c}.w$ | NDC Space
-5 | Viewport Transform (GPU) | $\mathbf{v}_{s} = M_{viewport} \cdot \mathbf{v}_{ndc}$ | Screen Space
+5 | Viewport Transform (GPU) | $\mathbf{v}_{s} = \text{Viewport}(\mathbf{v}_{ndc})$ | Screen Space
 
 ::::info
 Basically the **backward pipeline** is the same but with the inverse matrix.
-For NDC it's multiple by `w` instead of divide.
-For Screen space it's divide by $M_{viewport}$ instead of multiply.
+For NDC it's multiple by `w` instead of divide (if you have `w` saved somewhere).
+For the Viewport to NDC step, you apply the inverse scale-and-bias of the viewport
  ::::
