@@ -1,0 +1,126 @@
+# Coordinate Systems & MVP
+
+* Local space
+* World space
+* View space
+* Clip space
+* Screen space
+
+## Local Space
+Local space is also sometimes called **Model space** or **Object Space**
+* Local space is the coordinate system relative to an object's own origin, usually at `(0,0,0)`.
+* The cube (or model) vertices range from `(-1,-1,-1) to (1,1,1)`. It's origin is at `(0,0,0)`
+
+### **Transformation**:
+Local space to World space uses the **Model Matrix**.
+$$
+\mathbf{v}_{world} = M_{model} \cdot \mathbf{v}_{local}
+$$
+
+World space to Local space uses the **Inverse Model Matrix**.
+$$
+\mathbf{v}_{local}= M_{model}^{-1} \cdot \mathbf{v}_{world}
+$$
+
+**How to calculate $M_{model}^{-1}$**:
+An model matrix is composed of Translation ($T$), Rotation ($R$), and Scale ($S$):
+$$
+M_{model} = T \cdot R \cdot S
+$$
+To invert it analytically without doing an expensive full matrix inversion calculation, you reverse the operations and invert each individual property:
+$$
+M_{model}^{-1} = S^{-1} \cdot R^{-1} \cdot T^{-1}
+$$
+* $T^{-1}$ (Inverse Translation): Negate the translation values (move backward instead of forward).
+* $R^{-1}$ (Inverse Rotation): Transpose the rotation matrix (since pure rotation matrices are orthogonal, their transpose equals their inverse), or invert the quaternion.
+* $S^{-1}$ (Inverse Scale): Reciprocate the scale factors (divide by the scale instead of multiplying, e.g., $1/scale_x$).
+
+## World space
+World space places all objects into a common coordinate system. All objects relative to world origin.
+
+```text
+Cube local vertex = (1,1,1)
+Cube position in world = (5,0,0)
+Cube world space = (6,1,1)
+```
+
+### **Transformation**:
+World space to View space uses the **View Matrix**.
+$$
+\mathbf{v}_{view} = M_{view} \cdot \mathbf{v}_{world}
+$$
+
+View space to World space uses the **Inverse View Matrix**.
+$$
+\mathbf{v}_{world} = M_{view}^{-1} \cdot \mathbf{v}_{view}
+$$
+
+## View Space
+In view space, coordinates are relative to the camera.
+
+The camera is treated as being at: `(0,0,0)`
+looking along a standard direction (often −Z in OpenGL-style conventions).
+
+**World:**
+```text
+Camera = (0,0,10)
+Object = (0,0,0)
+```
+
+**View space:**
+```text
+Camera = (0,0,0)
+Object = (0,0,-10)
+```
+Everything is transformed so the camera becomes the origin.
+
+### **Transformation**:
+View space to Clip space uses the **Projection Matrix**.
+$$
+\mathbf{v}_{clip} = M_{proj} \cdot \mathbf{v}_{view}
+$$
+
+Clip space to View space uses the **Inverse Projection Matrix**.
+$$
+\mathbf{v}_{view} = M_{proj}^{-1} \cdot \mathbf{v}_{clip}
+$$
+
+## Clip Space
+A specialized space where coordinates are evaluated to see if they are visible on screen. If a vertex lies outside the boundaries defined by its $w$ component (i.e., $-w \le x, y, z \le w$), it is "clipped" (discarded).
+
+### **Transformation**:
+Clip space to NDC (Normalized Device Coordinates) **Perspective Divide**.
+$$
+\mathbf{v}_{ndc} = \begin{bmatrix} x/w \\ y/w \\ z/w \end{bmatrix}
+$$
+
+NDC to Clip space **Perspective Multiply**.
+$$
+\mathbf{v}_{clip} = \begin{bmatrix} nx*w \\ ny*w \\ nz*w \end{bmatrix}
+$$
+
+You've done this or copied it a million times:
+```glsl
+vec4 clipPosition = projection * view * model * vec4(vPosition, 1.0);
+vec3 ndc = clipPosition.xyz / clipPosition.w;
+```
+
+## Screen Space
+The actual pixel coordinates of your monitor/window (e.g., from `0` to `1920` on the X-axis, and `0` to `1080` on the Y-axis).
+
+## Forward pipeline
+
+Step | Operation | Matrix / Equation | Resulting Space
+|:---|:---|:---|:---
+Start | Mesh Data | Initial Vertex | Local Space
+1 | Apply Model Matrix | $\mathbf{v}_{w} = M_{model} \cdot \mathbf{v}_{l}$​ | World Space
+2 | Apply View Matrix | $\mathbf{v}_{v} = M_{view} \cdot \mathbf{v}_{w}$​ | View Space
+3 | Apply Projection Matrix | $\mathbf{v}_{c} = M_{proj} \cdot \mathbf{v}_{v}$​ | Clip Space
+4 | Perspective Divide (GPU) | $\mathbf{v}_{ndc} = \mathbf{v}_{c}.xyz / \mathbf{v}_{c}.w$ | NDC Space
+5 | Viewport Transform (GPU) | $\mathbf{v}_{s} = M_{viewport} \cdot \mathbf{v}_{ndc}$ | Screen Space
+
+::::info
+Basically the **backward pipeline** is the same but with the inverse matrix.
+For NDC it's multiple by `w` instead of divide.
+For Screen space it's divide by M_{viewport} instead of multiply.
+ ::::
