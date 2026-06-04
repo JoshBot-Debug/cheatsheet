@@ -140,7 +140,7 @@ int main() {
 }
 ```
 
-### **A more realistic example:**
+### A more realistic example:
 
 `std::future` is returned by `std::async` and if you `std::promise` you'll use `std::future`. `std::future` is key here. To retrieve the data you have a few ways:
 * `future.get()`: Blocks the thread until the data is ready
@@ -167,16 +167,12 @@ int main() {
 
     int square = 0;
 
-    if (status == std::future_status::ready) {
+    if (status == std::future_status::ready)
       square = result.get();
-      break;
-    }
 
-    if (status == std::future_status::deferred) {
-      // Gotcha: If std::async chose lazy evaluation, it will never finish unless you call get() or wait().
+    // Gotcha: If std::async chose lazy evaluation, it will never finish unless you call get() or wait().
+    if (status == std::future_status::deferred)
       square = result.get();
-      break;
-    }
 
     // wait_for timed out
     // if (status == std::future_status::timeout)
@@ -189,6 +185,42 @@ int main() {
     std::cout << "Update & Render..." << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
+
+  return 0;
+}
+```
+
+## `std::thread` & `std::jthread`
+
+Why `std::jthread` over `std::thread`:
+* Automatic Joining: `std::jthread` automatically calls `.join()` in its destructor if it's still joinable.
+* Built-in Cooperative Interruption: `std::jthread` natively supports cooperative **cancellation** using `std::stop_token` and `std::stop_source`.
+
+### Cooperative Cancellation
+You may find yourself using a thread to run a task that should be cancellable, like rendering an image or downloading something. Historically, you would use an `std::atomic<bool>` as a flag in a `std::thread`.
+
+`std::jthread` automaically passes a `std::stop_token` if your worker function accepts one as the first argument.
+
+```cpp
+#include <iostream>
+#include <thread>
+#include <chrono>
+
+void worker(std::stop_token stoken) {
+  while (!stoken.stop_requested()) {
+    std::cout << "Working...\n";
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
+  std::cout << "Worker stopped.\n";
+}
+
+int main() {
+  std::jthread jt(worker);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(400)); // imagine the thread runs for a bit
+
+  std::cout << "User pressed \"cancel\"\n";
+  jt.request_stop(); 
 
   return 0;
 }
