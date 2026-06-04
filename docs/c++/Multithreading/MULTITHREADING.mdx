@@ -301,7 +301,7 @@ Feature | std::counting_semaphore<LeastMaxValue> | std::binary_semaphore
 |:--|:--|:--
 Counter Range | 0 up to LeastMaxValue | 0 or 1 only
 Primary Use Case | "Managing a limited pool of identical resources (e.g. |  database connections)." | Fast thread-to-thread signaling or mutual exclusion.
-Definition | A template class where you specify the max capacity. | An alias for std::counting_semaphore<1>.
+Definition | A template class where you specify the max capacity. | An alias for `std::counting_semaphore<1>`.
 
 ### `std::counting_semaphore`
 
