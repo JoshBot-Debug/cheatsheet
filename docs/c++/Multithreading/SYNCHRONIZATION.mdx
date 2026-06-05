@@ -6,15 +6,120 @@
 * `std::mutex`: Mutual exclusion
 * `std::atomic`: Lock free
 
-### `std::counting_semaphore` & `std::binary_semaphore`
+## `std::latch`
 
-#### How Semaphores Work
+* **`std::ref` is required**: Threads copy their arguments by default. Because `std::latch` cannot be copied or moved, you must pass it by reference using `std::ref(setup_latch)`.
+* **Non-blocking signaling**: Notice that `setup_latch.count_down()` does not block the worker threads. They log their "Continuing..." message immediately without waiting for the other workers. Only the main thread calling `.wait()` is blocked.
+* **One-way gate**: Once the 3rd service calls `count_down()`, the latch opens. If the main thread calls `setup_latch.wait()` again later, it will pass through instantly.
+
+```cpp
+#include <iostream>
+#include <thread>
+#include <latch>
+#include <vector>
+#include <chrono>
+
+void initialize_service(int service_id, std::latch& setup_latch) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(100 * service_id));
+  
+  std::cout << "[Service " << service_id << "] Initialization complete.\n";
+  
+  // Decrement the latch counter without blocking this thread
+  setup_latch.count_down();
+  
+  std::cout << "[Service " << service_id << "] Continuing with background tasks...\n";
+}
+
+int main() {
+  // 3 Services need to complete before the main loop can begin 
+  // Initialize the latch with a count of 3
+  std::latch latch(3);
+  std::vector<std::jthread> workers;
+
+  std::cout << "[Main] Starting background services...\n";
+
+  // Launch the worker threads
+  for (int i = 1; i <= num_services; ++i)
+    workers.emplace_back(initialize_service, i, std::ref(latch));
+
+  std::cout << "[Main] Waiting for all services to be ready...\n";
+  
+  // Block until latch is zero
+  latch.wait();
+  
+  std::cout << "\n[Main] Success! All services are ready. System is fully operational.\n\n";
+
+  return 0;
+}
+```
+
+## `std::barrier`
+
+Unlike `std::latch`, a `std::barrier` is reusable and operates in repetitive phases.
+* It forces a set number of threads to wait for each other at a checkpoint `.arrive_and_wait()`. Only when all threads have arrived does the barrier open.
+* Once the barrier opens, `on_round_complete()` the callback is executed **once** and the barrier **resets**. It can be reused.
+* `.arrive()` decrements the barrier's expected count.
+* `.wait()` blocks the thread until the barrier count is zero.
+* `.arrive_and_wait()` does both.
+
+```cpp
+#include <iostream>
+#include <thread>
+#include <barrier>
+#include <vector>
+#include <string>
+#include <chrono>
+
+// The completion function: executed automatically by the LAST thread 
+// that arrives at the barrier, right before the barrier resets for the next phase.
+void on_round_complete() noexcept {
+  static int round = 1;
+  std::cout << "\n--- [Barrier] Round " << round << " complete! Syncing data... ---\n\n";
+  round++;
+}
+
+void player_task(std::string name, std::barrier<void(*)() noexcept>& barrier) {
+  // Phase 1: Round 1
+  std::cout << name << " is playing Round 1...\n";
+  std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate gameplay
+  
+  std::cout << name << " finished Round 1. Waiting at the barrier...\n";
+  barrier.arrive_and_wait(); // Blocks until all 3 players arrive
+
+  // Phase 2: Round 2
+  std::cout << name << " is playing Round 2...\n";
+  std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Simulate gameplay
+  
+  std::cout << name << " finished Round 2. Waiting at the barrier...\n";
+  barrier.arrive_and_wait(); // Reused! Blocks again for Round 2
+}
+
+int main() {  
+  // Create a barrier for 3 threads, registering our completion function
+  std::barrier barrier(3, on_round_complete);
+  
+  std::vector<std::jthread> players;
+  players.emplace_back(player_task, "Player_1", std::ref(barrier));
+  players.emplace_back(player_task, "Player_2", std::ref(barrier));
+  players.emplace_back(player_task, "Player_3", std::ref(barrier));
+
+  // jthreads automatically join when they go out of scope
+  return 0;
+}
+```
+
+## `std::future`
+`std::future`, `std::async`, `std::promise` & `std::packaged_task` has already been covered in [multithreading](/c++/Multithreading/#stdasync-stdfuture--stdpromise)
+
+## `std::counting_semaphore` & `std::binary_semaphore`
+
+### How Semaphores Work
 
 **A semaphore manages an internal counter via two primary operations:**
 * `release()` (Signal / Up): Increments the counter. If threads are blocked waiting, one is unblocked.
 * `acquire()` (Wait / Down): Decrements the counter. If the counter is 0, the calling thread blocks until the counter becomes greater than 0.
 
-#### Counting vs Binary semaphore
+### Counting vs Binary semaphore
 
 Feature | `std::counting_semaphore<LeastMaxValue>` | std::binary_semaphore
 |:--|:--|:--
@@ -22,7 +127,7 @@ Counter Range | 0 up to LeastMaxValue | 0 or 1 only
 Primary Use Case | Managing a limited pool of identical resources (e.g. \|  database connections). | Fast thread-to-thread signaling or mutual exclusion.
 Definition | A template class where you specify the max capacity. | An alias for `std::counting_semaphore<1>`.
 
-#### `std::counting_semaphore`
+### `std::counting_semaphore`
 
 Imagine you have a server that can only handle up to 3 concurrent database connections. If a 4th thread tries to get a connection, it must wait until one of the first three finishes and releases its slot.
 
@@ -60,7 +165,7 @@ int main() {
 }
 ```
 
-#### `std::binary_semaphore`
+### `std::binary_semaphore`
 
 A `std::binary_semaphore` initializes with either `0` or `1`. It is perfect for signaling between threads because, unlike a condition variable, **the signal is remembered**. If Thread A calls `release()` before Thread B calls `acquire()`, Thread B will not block; it will immediately consume the signal and proceed.
 
@@ -94,6 +199,6 @@ int main() {
 }
 ```
 
-#### Semaphore vs. Condition Variable vs. Mutex
+### Semaphore vs. Condition Variable vs. Mutex
 * **vs. Mutex**: A mutex must be unlocked by the exact same thread that locked it. A semaphore can be released by any thread, making it perfect for asymmetric producer-consumer setups.
 * **vs. Condition Variable**: Condition variables require an accompanying `std::mutex` and a manual state variable (like a boolean flag) to avoid "missed wakeups." Semaphores handle the state internally via their counter, making them lighter weight and less error-prone for straightforward signaling.
