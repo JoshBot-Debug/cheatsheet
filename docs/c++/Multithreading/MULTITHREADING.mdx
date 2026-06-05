@@ -122,7 +122,7 @@ int use_promise() {
   int result = future.get(); // blocks the thread until the result arrives OR throws the exception that was set.
 
   // Bad example I guess, in your program this would happen else where perhaps? (it should otherwise your program is redundant like this example)
-  worker.join(); // Always remember to join your threads :P
+  worker.join(); // Always remember to join your threads, or use std::jthread :P
 
   return result;
 }
@@ -184,6 +184,46 @@ int main() {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 
+  return 0;
+}
+```
+#### Why use `std::packaged_task` instead of `std::async`?
+While `std::async` handles both creating the task and spawning the thread automatically, `std::packaged_task` decouples the two. This gives you much finer control:
+1. **Custom Thread Management**: You can hand a `std::packaged_task` off to a thread pool, an explicit `std::jthread`, or a specific background event loop, while still retaining the clean `std::future` API to get the result.
+2. **Delayed Execution**: You can create the task on one thread, pass it to an object or a queue, and execute it much later simply by invoking task(args...).
+
+```cpp
+#include <iostream>
+#include <thread>
+#include <future>
+#include <cmath>
+#include <chrono>
+
+int compute_power(int base, int exp) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  std::cout << "Meanwhile compute_power() finished... \n";
+  return std::pow(base, exp);
+}
+
+int main() {
+  std::packaged_task<int(int, int)> task(compute_power);
+
+  std::future<int> future = task.get_future();
+
+  // packaged_task is move-only; it cannot be copied
+  std::jthread worker(std::move(task), 2, 10);
+
+  std::cout << "[Main] Worker thread is calculating 2^10...\n";
+
+  std::cout << "[Main] Doing other logic here...\n";
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  std::cout << "[Main] Doing more logic here...\n";
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+  int result = future.get();
+
+  std::cout << "[Main] Result received from worker: " << result << "\n";
+  
   return 0;
 }
 ```
