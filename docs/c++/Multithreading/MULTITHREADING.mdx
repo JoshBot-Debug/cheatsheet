@@ -196,10 +196,11 @@ int main() {
 ::::
 
 Why `std::jthread` over `std::thread`:
-* Automatic Joining: `std::jthread` automatically calls `.join()` in its destructor if it's still joinable.
-* Built-in Cooperative Interruption: `std::jthread` natively supports cooperative **cancellation** using `std::stop_token` and `std::stop_source`.
+* **Automatic Joining**: `std::jthread` automatically calls `.join()` in its destructor if it's still joinable.
+* **Built-in Cooperative Interruption**: `std::jthread` natively supports cooperative **cancellation** using `std::stop_token` and `std::stop_source`.
+* **`std::stop_callback`**: Registers a callback function for an associated std::stop_token object.
 
-#### Cooperative Cancellation
+#### `std::stop_token`: Cooperative Cancellation
 You may find yourself using a thread to run a task that should be cancellable, like rendering an image or downloading something. Historically, you would use an `std::atomic<bool>` as a flag in a `std::thread`.
 
 `std::jthread` automaically passes a `std::stop_token` if your worker function accepts one as the first argument.
@@ -286,5 +287,47 @@ int main() {
 You must use `std::condition_variable_any` for this. The standard `std::condition_variable` does not have overloads that accept a `std::stop_token`.
 ::::
 
+#### `std::stop_callback` & `std::stop_source`
+* `std::jthread` can be moved, but it cannot be copied. How do you stop the thread from another thread?
+ * `std::stop_source`: `get_stop_source()` returns an `std::stop_source`. You can copy & move it to other threads.
+ * The `stop_source.request_stop()` function returns `true` only on the very first successful call that actually triggers the stop. It returns `false` on all subsequent calls.
+
+```cpp
+#include <iostream>
+#include <thread>
+#include <chrono>
+
+void worker(std::stop_token stoken) {
+  while (!stoken.stop_requested()) {
+    std::cout << "Working...\n";
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
+  std::cout << "Worker stopped.\n";
+}
+
+int main() {
+  std::jthread t(worker);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(400)); // imagine the thread runs for a bit
+
+  auto onStopThread = []() {
+    std::cout << "Stop callback executed" << std::endl;
+  };
+
+  std::stop_callback callback(t.get_stop_token(), onStopThread);
+
+  std::cout << "User pressed 'cancel'" << std::endl;
+
+  std::stop_source stop_source = t.get_stop_source();
+
+  stop_source.request_stop();
+  // Or directly call t.request_stop()
+  // t.request_stop(); 
+
+  return 0;
+}
+```
+
 ## References & Citations
 [An Introduction to Multithreading in C++20 - Anthony Williams - CppCon 2022](https://www.youtube.com/watch?v=A7sVFJLJM-A)
+https://en.cppreference.com/cpp/thread/stop_callback
