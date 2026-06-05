@@ -87,6 +87,8 @@ The **thread-safe delivery pipe** designed to pass a value (or an exception) fro
 * `std::async`: A helper function that automatically creates the pipe, spawns a background thread, executes your function, and hands you the `std::future` output.
 
 `std::promise` and `std::future` cannot be copied, only moved `std::move`.
+`std::future` can only call `.get()` once, it moves the value out.
+`std::shared_future` can be copied and moved. Multiple threads can call `.wait()` & `.get()`. `.get()` returns a `const T&`.
 
 ```cpp
 #include <iostream>
