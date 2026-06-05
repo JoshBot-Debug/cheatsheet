@@ -21,14 +21,14 @@ The core insight of Amdahl's Law is simple: **the overall speedup of a program i
 
 ### The Formula
 $$
-S_{\text{latency}}(s) = \frac{1}{(1 - p) + \frac{p}{s}}
+S_{\text{latency}}(s) = \frac{1}{(1 - p) + \frac{p}{n}}
 $$
 
 Where:
 * $S_{\text{latency}}$ is the theoretical speedup of the whole task.
 * $p$ is the proportion of the execution time that benefits from the improvement (the parallelizable part, expressed as a fraction between 0 and 1).
 * $1 - p$ is the proportion that cannot be improved (the strictly serial part).
-* $s$ is the speedup factor of the part that benefits from the improvement (e.g., the number of processor cores).
+* $n$ is the speedup factor of the part that benefits from the improvement (e.g., the number of processor cores).
 
 Imagine a program takes **10 hours** to run sequentially:
 * 9 hours (90%, so $p = 0.90$) can be parallelized.
@@ -47,18 +47,17 @@ $$
 
 With 4 cores, the system runs roughly 3.08 times faster.
 
-## Multithreading tools
+## Multithreading APIs
 
 * `std::execution`: Standard Execution Policies / Parallel Algorithms
-* `std::async`, `std::future`, & `std::promise`: This trio implements the "Task-based asynchronous" pattern. It decouples the act of triggering a calculation from the act of waiting for its result.
+* `std::async` & `std::promise`:
+  * `std::async`: A high-level function template used to run a task asynchronously (in a new thread or deferred) which returns a `std::future` holding the eventual result.
+  * `std::promise`: The "input" or provider side of an asynchronous channel. A thread uses a `std::promise` to set a value or an exception, which is then delivered to the associated `std::future`.
 * `std::thread` & `std::jthread`: `std::jthread` automatically joins when it's destroyed. RAII.
-* `std::counting_semaphore` & `std::binary_semaphore`: Synchronization Primitives
-* `std::mutex`: Mutual exclusion
-* `std::atomic`: Lock free
 
 *Each of the topics above deserve a seperate book, let alone page. I'm going to cover it in a few paragraphs and examples. In the future I may add a seperate page for each and cover more details.*
 
-## `std::execution` Standard Execution Policies
+### `std::execution` Standard Execution Policies
 
 **The Standard Execution Policies:**
 * `std::execution::seq`: Sequential execution (normal).
@@ -79,7 +78,7 @@ std::sort(std::execution::par, vec.begin(), vec.end());
 
 *There are 100s of algorithms in the standard library that have been overloaded to accept an **execution policy** as the **first argument**.*
 
-## `std::async`, `std::future`, & `std::promise`
+### `std::async`, `std::future`, & `std::promise`
 
 The **thread-safe delivery pipe** designed to pass a value (or an exception) from a background worker thread to a waiting thread.
 
@@ -106,7 +105,7 @@ int use_async() {
   return result.get(); // blocks the thread until the result arrives
 }
 
-int use_future() {
+int use_promise() {
   // Create the promise (input) channel
   std::promise<int> promise;
 
@@ -131,10 +130,10 @@ int use_future() {
 int main() {
 
   int a = use_async();
-  int b = use_future();
+  int b = use_promise();
 
   std::cout << "use_async: " << a << std::endl;
-  std::cout << "use_future: " << b << std::endl;
+  std::cout << "use_promise: " << b << std::endl;
 
   return 0;
 }
@@ -190,7 +189,7 @@ int main() {
 }
 ```
 
-## `std::thread` & `std::jthread`
+### `std::thread` & `std::jthread`
 
 ::::info
 `std::jthread` is short for Joining Thread.
@@ -200,7 +199,7 @@ Why `std::jthread` over `std::thread`:
 * Automatic Joining: `std::jthread` automatically calls `.join()` in its destructor if it's still joinable.
 * Built-in Cooperative Interruption: `std::jthread` natively supports cooperative **cancellation** using `std::stop_token` and `std::stop_source`.
 
-### Cooperative Cancellation
+#### Cooperative Cancellation
 You may find yourself using a thread to run a task that should be cancellable, like rendering an image or downloading something. Historically, you would use an `std::atomic<bool>` as a flag in a `std::thread`.
 
 `std::jthread` automaically passes a `std::stop_token` if your worker function accepts one as the first argument.
@@ -230,7 +229,7 @@ int main() {
 }
 ```
 
-### Automatic Interruption
+#### Automatic Interruption
 
 ```cpp
 #include <iostream>
@@ -287,7 +286,16 @@ int main() {
 You must use `std::condition_variable_any` for this. The standard `std::condition_variable` does not have overloads that accept a `std::stop_token`.
 ::::
 
-## `std::counting_semaphore` & `std::binary_semaphore`
+
+## Synchronization
+* `std::latch`: A downward counter that blocks threads until the counter reaches zero. Decrements down to zero once. Cannot be reused.
+* `std::barrier`: Reusable. Once the counter hits zero, it resets back to its initial value for the next "phase". It forces all threads to wait for each other at a specific checkpoint before anyone can proceed to the next phase.
+* `std::future`: The "output" or consumer side of an asynchronous operation. It allows a thread to wait for and retrieve a value or exception that is asynchronously computed by `std::async`, `std::packaged_task`, or `std::promise`.
+* `std::counting_semaphore` & `std::binary_semaphore`: Synchronization Primitives
+* `std::mutex`: Mutual exclusion
+* `std::atomic`: Lock free
+
+### `std::counting_semaphore` & `std::binary_semaphore`
 
 #### How Semaphores Work
 
@@ -303,7 +311,7 @@ Counter Range | 0 up to LeastMaxValue | 0 or 1 only
 Primary Use Case | Managing a limited pool of identical resources (e.g. \|  database connections). | Fast thread-to-thread signaling or mutual exclusion.
 Definition | A template class where you specify the max capacity. | An alias for `std::counting_semaphore<1>`.
 
-### `std::counting_semaphore`
+#### `std::counting_semaphore`
 
 Imagine you have a server that can only handle up to 3 concurrent database connections. If a 4th thread tries to get a connection, it must wait until one of the first three finishes and releases its slot.
 
@@ -341,7 +349,7 @@ int main() {
 }
 ```
 
-### `std::binary_semaphore`
+#### `std::binary_semaphore`
 
 A `std::binary_semaphore` initializes with either `0` or `1`. It is perfect for signaling between threads because, unlike a condition variable, **the signal is remembered**. If Thread A calls `release()` before Thread B calls `acquire()`, Thread B will not block; it will immediately consume the signal and proceed.
 
@@ -375,7 +383,7 @@ int main() {
 }
 ```
 
-### Semaphore vs. Condition Variable vs. Mutex
+#### Semaphore vs. Condition Variable vs. Mutex
 * **vs. Mutex**: A mutex must be unlocked by the exact same thread that locked it. A semaphore can be released by any thread, making it perfect for asymmetric producer-consumer setups.
 * **vs. Condition Variable**: Condition variables require an accompanying `std::mutex` and a manual state variable (like a boolean flag) to avoid "missed wakeups." Semaphores handle the state internally via their counter, making them lighter weight and less error-prone for straightforward signaling.
 
