@@ -1,0 +1,99 @@
+# Synchronization
+* `std::latch`: A downward counter that blocks threads until the counter reaches zero. Decrements down to zero once. Cannot be reused.
+* `std::barrier`: Reusable. Once the counter hits zero, it resets back to its initial value for the next "phase". It forces all threads to wait for each other at a specific checkpoint before anyone can proceed to the next phase.
+* `std::future`: The "output" or consumer side of an asynchronous operation. It allows a thread to wait for and retrieve a value or exception that is asynchronously computed by `std::async`, `std::packaged_task`, or `std::promise`.
+* `std::counting_semaphore` & `std::binary_semaphore`: Synchronization Primitives
+* `std::mutex`: Mutual exclusion
+* `std::atomic`: Lock free
+
+### `std::counting_semaphore` & `std::binary_semaphore`
+
+#### How Semaphores Work
+
+**A semaphore manages an internal counter via two primary operations:**
+* `release()` (Signal / Up): Increments the counter. If threads are blocked waiting, one is unblocked.
+* `acquire()` (Wait / Down): Decrements the counter. If the counter is 0, the calling thread blocks until the counter becomes greater than 0.
+
+#### Counting vs Binary semaphore
+
+Feature | `std::counting_semaphore<LeastMaxValue>` | std::binary_semaphore
+|:--|:--|:--
+Counter Range | 0 up to LeastMaxValue | 0 or 1 only
+Primary Use Case | Managing a limited pool of identical resources (e.g. \|  database connections). | Fast thread-to-thread signaling or mutual exclusion.
+Definition | A template class where you specify the max capacity. | An alias for `std::counting_semaphore<1>`.
+
+#### `std::counting_semaphore`
+
+Imagine you have a server that can only handle up to 3 concurrent database connections. If a 4th thread tries to get a connection, it must wait until one of the first three finishes and releases its slot.
+
+```cpp
+#include <iostream>
+#include <semaphore>
+#include <thread>
+#include <vector>
+#include <chrono>
+
+// Allow up to 3 slots to be acquired simultaneously
+std::counting_semaphore<3> pool_semaphore(3); 
+
+void worker(int id) {
+    std::cout << "[Thread " << id << "] Waiting for a connection slot...\n";
+    
+    // Decrements the counter. If counter == 0, blocks here.
+    pool_semaphore.acquire(); 
+
+    std::cout << "[Thread " << id << "] Slot acquired. Accessing DB...\n";
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    std::cout << "[Thread " << id << "] Releasing slot.\n";
+    
+    // Increments the counter, waking up another waiting thread.
+    pool_semaphore.release(); 
+}
+
+int main() {
+    std::vector<std::jthread> threads;
+    
+    // 6 threads competing for 3 slots
+    for (int i = 1; i <= 6; ++i)
+        threads.emplace_back(worker, i);
+}
+```
+
+#### `std::binary_semaphore`
+
+A `std::binary_semaphore` initializes with either `0` or `1`. It is perfect for signaling between threads because, unlike a condition variable, **the signal is remembered**. If Thread A calls `release()` before Thread B calls `acquire()`, Thread B will not block; it will immediately consume the signal and proceed.
+
+```cpp
+#include <iostream>
+#include <semaphore>
+#include <thread>
+#include <chrono>
+
+// Initialize with 0 (locked/unavailable by default)
+std::binary_semaphore signal(0);
+
+void play() {
+  std::cout << "play() Waiting for assets to load..." << std::endl;
+
+  // Blocks the thread while semaphore is 0
+  signal.acquire(); 
+  
+  std::cout << "play() Assets received, Starting game loop." << std::endl;
+}
+
+void loadAssets() {
+  std::cout << "loadAssets() Loading game assets..." << std::endl;
+  std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+  signal.release(); // semaphore: 0 to 1
+}
+
+int main() {
+  std::jthread a(loadAssets);
+  std::jthread b(play);
+}
+```
+
+#### Semaphore vs. Condition Variable vs. Mutex
+* **vs. Mutex**: A mutex must be unlocked by the exact same thread that locked it. A semaphore can be released by any thread, making it perfect for asymmetric producer-consumer setups.
+* **vs. Condition Variable**: Condition variables require an accompanying `std::mutex` and a manual state variable (like a boolean flag) to avoid "missed wakeups." Semaphores handle the state internally via their counter, making them lighter weight and less error-prone for straightforward signaling.
