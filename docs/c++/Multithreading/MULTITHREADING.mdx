@@ -138,8 +138,7 @@ int main() {
   return 0;
 }
 ```
-
-### A more realistic example:
+A more realistic example:
 
 `std::future` is returned by `std::async` and if you `std::promise` you'll use `std::future`. `std::future` is key here. To retrieve the data you have a few ways:
 * `future.get()`: Blocks the thread until the data is ready
