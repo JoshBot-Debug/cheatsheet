@@ -1,0 +1,167 @@
+# Stencil Testing
+
+Stencil testing is used to discard fragments based on a configurable stencil mask. 
+It allows you to mask out specific areas of the screen to achieve advanced visual effects like **outlines**, **portals**, **mirrors**, or **shadows**.
+
+## What is the Stencil Buffer?
+
+The stencil buffer is a non-visible 2D buffer that matches the width and height of your screen window, exactly like the depth buffer. 
+Instead of storing depth values, each pixel in the stencil buffer stores an integer value (usually an 8-bit unsigned integer, providing values between `0` and `255`).
+
+**Stencil testing is done in screen space after the fragment shader has run, but right before the depth test.**
+
+During a stencil test, a fragment's configured stencil reference value is compared against the stencil value currently stored in the buffer. 
+If the test passes, the fragment is kept for further processing (like the depth test). If it fails, the fragment is immediately discarded.
+
+::::note
+Because the stencil test happens before the depth test, you can discard fragments early based on stencil masks, saving performance on subsequent depth calculations.
+::::
+
+::::note
+Unlike the depth buffer, which stores continuous floating-point approximations, the stencil buffer stores exact integer values. 
+This makes it perfect for precise binary masking or integer-based counting operations per pixel.
+::::
+
+## Enable stencil testing
+
+### When you don't need the stencil texture
+
+```cpp
+glEnable(GL_STENCIL_TEST);
+```
+
+The stencil buffer is automatically managed by the windowing system alongside the depth buffer (often combined into a single `GL_DEPTH24_STENCIL8` internal format).
+
+Once enabled, OpenGL compares fragments against the stencil buffer. If you have stencil testing enabled, you should clear the stencil buffer before each frame using `GL_STENCIL_BUFFER_BIT` 
+to reset your masks; otherwise, you'll carry over masking states from the previous frame:
+
+```cpp
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+```
+
+Just like the depth mask, OpenGL allows us to enable or disable writing to the stencil buffer. You can pass a bitmask to `glStencilMask` to control which bits are allowed to be written to the buffer:
+
+```cpp
+// Everything written to the stencil buffer is disabled (Read-only)
+glStencilMask(0x00); 
+
+// Each bit is written to the stencil buffer as-is (Write enabled)
+glStencilMask(0xFF);
+```
+
+### When you need the stencil texture
+
+To use the stencil buffer later—typically for advanced post-processing effects like screen-space masks, local rendering layers, 
+or custom UI masking—you need to render your scene into a custom Framebuffer Object (**FBO**) and attach a texture capable of holding stencil data.
+
+Because depth and stencil data are usually bound together on hardware, you will typically create a single depth-stencil texture.
+
+Generate the stencil (depth-stencil) texture:
+
+```cpp
+unsigned int stencilTexture;
+glGenTextures(1, &stencilTexture);
+glBindTexture(GL_TEXTURE_2D, stencilTexture);
+
+// You must create a texture with a stencil-compatible format, usually GL_DEPTH24_STENCIL8
+glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 800, 600, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+```
+Attach the Texture to a Custom Framebuffer:
+```cpp
+unsigned int fbo;
+glGenFramebuffers(1, &fbo);
+glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+// Attach the combined depth-stencil texture to the FBO
+glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, stencilTexture, 0);
+
+if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+
+glBindFramebuffer(GL_FRAMEBUFFER, 0);
+```
+
+Render the Scene to the FBO:
+```cpp
+glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+glEnable(GL_STENCIL_TEST); 
+glEnable(GL_DEPTH_TEST); 
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+RenderScene();
+
+glBindFramebuffer(GL_FRAMEBUFFER, 0);
+```
+
+::::note
+Notice that we still had to use `glEnable(GL_STENCIL_TEST)` and `GL_STENCIL_BUFFER_BIT`. The only difference is we bound a custom **fbo** where we specified our custom depth-stencil attachment.
+::::
+
+## Stencil test functions
+
+OpenGL gives us total control over how the stencil comparison is made, and how the buffer updates based on the results of the tests. 
+This is handled via two functions: `glStencilFunc` and `glStencilOp`.
+
+### 1. Setting the comparison criteria
+
+`glStencilFunc(GLenum func, GLint ref, GLuint mask)` dictates how OpenGL determines if a fragment passes the stencil test.
+* **func**: The comparison operator.
+* **ref**: The reference value to compare against the buffer value.
+* **mask**: A bitwise mask that is ANDed (&) with both the reference value and the stored buffer value before comparison.
+
+```cpp
+glEnable(GL_STENCIL_TEST); // enable first
+glStencilFunc(GL_EQUAL, 1, 0xFF);
+```
+
+Function|Description
+|:---|:---
+GL_ALWAYS|The stencil test always passes.
+GL_NEVER|The stencil test never passes.
+GL_LESS|Passes if the reference value is less than the stored stencil value.
+GL_EQUAL|Passes if the reference value is equal to the stored stencil value.
+GL_LEQUAL|Passes if the reference value is less than or equal to the stored stencil value.
+GL_GREATER|Passes if the reference value is greater than the stored stencil value.
+GL_NOTEQUAL|Passes if the reference value is not equal to the stored stencil value.
+GL_GEQUAL|Passes if the reference value is greater than or equal to the stored stencil value.
+
+### 2. Modifying the buffer actions
+
+`glStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass)` dictates how the buffer values actually change based on three distinct scenarios:
+* **sfail**: Action to take if the stencil test fails.
+* **dpfail**: Action to take if the stencil test passes, but the depth test fails.
+* **dppass**: Action to take if both the stencil and depth tests pass.
+
+```cpp
+glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+```
+
+Action|Description
+|:---|:---
+GL_KEEP|Keeps the currently stored stencil value (no change).
+GL_ZERO|Sets the stencil value to 0.
+GL_REPLACE|Replaces the stencil value with the reference value set via glStencilFunc.
+GL_INCR|Increments the current stencil value by 1, clamping at the maximum value (255).
+GL_INCR_WRAP|Increments the current stencil value by 1, wrapping around to 0 if it exceeds 255.
+GL_DECR|Decrements the current stencil value by 1, clamping at 0.
+GL_DECR_WRAP|Decrements the current stencil value by 1, wrapping around to 255 if it goes below 0.
+GL_INVERT|Bitwise inverts the current stencil buffer value.
+
+## Object Outlining (Example Application)
+
+A common use case for stencil testing is drawing a distinct color border around selected objects.
+
+1. Clear the stencil buffer and set `glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)`.
+2. Set the stencil function to `GL_ALWAYS` with a reference value of `1`, and enable writing (`glStencilMask(0xFF)`).
+3. Render your target object normally (it writes 1s into the stencil buffer wherever it draws fragments).
+4. Disable stencil writing (`glStencilMask(0x00)`) and change the function to `glStencilFunc(GL_NOTEQUAL, 1, 0xFF)`.
+5. Scale your object up slightly in size via your vertex shader or model matrix.
+6. Render the scaled object using a single solid outline color. Because of the `GL_NOTEQUAL` check, it will only draw fragments where the original object did not write a `1`, cleanly rendering only the exposed outer border.
+
+## Resources & Citations
+https://learnopengl.com/Advanced-OpenGL/Stencil-testing
