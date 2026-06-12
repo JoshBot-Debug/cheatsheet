@@ -168,7 +168,23 @@ void main() {
 
 ### 8. **FB**: Framebuffer / Per-Sample Operations
 
-* Like the Rasterizer, this is a fixed-function blending and testing ground handled via API commands.
+Like the Rasterizer, this is a fixed-function testing and blending ground handled via API commands.
+
+Here is the chronological order of the standard tests:
+* **Scissor Test**: Checks if the fragment lies within a specific rectangular window defined by glScissor.
+* **Stencil Test**: Compares the fragment's stencil value against the stencil buffer. (First)
+* **Depth Test**: Compares the fragment’s $z$ value against the depth buffer. (Second)
+* **Blending**: Combines the fragment's color with the color already in the framebuffer (used for transparency).
+* **Dithering**: A historical technique to arrange pixels to simulate more colors on low-color displays (rarely noticeable on modern hardware).
+* **Logical Operations**: Applies bitwise operations between the fragment color and framebuffer color (rarely used today).
+
+::::note
+While the above is the logical order of the pipeline, modern GPUs have an optimization trick called Early-Z (or Early Fragment Testing).
+
+If your fragment shader isn't doing anything crazy, the GPU will actually run the Stencil and Depth tests before the Fragment Shader even runs.
+
+If you use the `discard` keyword in your fragment shader, or if you manually modify the depth value inside the shader (`gl_FragDepth`), the GPU is forced to disable Early-Z and revert to the standard order, because it can't know the true depth of the pixel until the shader finishes executing.
+::::
 
 ```cpp
 glEnable(GL_DEPTH_TEST);  // Discard fragments hidden behind closer objects
