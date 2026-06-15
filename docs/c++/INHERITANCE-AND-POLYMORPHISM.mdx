@@ -21,6 +21,10 @@ Here we are saying that a `Square` is  a `Retangle`. The `Square` exposes all of
 
 A class relationship defines an *Has-a* relationship if the derived class **privately** inherits the base class:
 
+::::note
+This is apparently debatable. Most people think of **composition** as a *Has-a* relationship. If someone asks you what is a *Has-a* relationship, say **composition** before private inheritance.
+::::
+
 ```cpp
 
 class Container : private std::vector<int> {
@@ -36,6 +40,8 @@ It's also possible to expose `std::vector` methods publicly with the help of `us
 
 ::::note
 **Composition over inheritance**:
+
+Composition is a **Has-a** relationship.
 
 Generally it's prefered to compose over inherit. This `Container` is a great example. While this works and we can use the `std::vector` implementation this way, the prefered method is composition:
 
@@ -216,6 +222,45 @@ int main() {
 }
 ```
 ::::
+
+### Object Slicing
+Object slicing occurs when a derived class object is assigned to a base class object by value.
+
+```cpp
+#include <iostream>
+
+class Base {
+public:
+    int base_var = 1;
+    virtual void print() const { std::cout << "I am Base\n"; }
+};
+
+class Derived : public Base {
+public:
+    int derived_var = 2;
+    void print() const override { std::cout << "I am Derived\n"; }
+};
+
+// Object slicing
+void callByValue(Base b) {
+    b.print(); 
+}
+
+int main() {
+    Derived d;
+    
+    // Object slicing
+    Base b = d; 
+    b.print(); // "I am Base" (Derived behavior is lost)
+    // std::cout << b.derived_var; // Compiler Error! Member does not exist in 'b'
+
+    callByValue(d); // Outputs: "I am Base"
+}
+```
+
+When `Base b = d` `Base` a new stack member is created and enough memory is allocated for `Base`. `Base` copy constructor is called. `Derived d` is left untouched it's memory is intact. 
+When object slicing occurs, the virtual pointer (vptr) is updated by the compiler to point to the `Base` class's virtual table (vtable). It does not keep pointing to the `Derived` table. 
+**Polymorphism is lost**
 
 ## Multiple inheritance
 
