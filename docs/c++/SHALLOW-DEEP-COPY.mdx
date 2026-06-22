@@ -15,8 +15,10 @@
 ```cpp
 class Animal
 {
+private:
     Species *species;
 
+public:
     Animal(const Animal &other) {
         /**
          * Bitwise copy will copy the pointer, not the associated
