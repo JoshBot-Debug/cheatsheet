@@ -63,9 +63,9 @@ With C++11, smart pointers were introduced into the standard library.
     
 **Weak pointer**
   * `std::weak_ptr<Resource> ptr = shared_ptr;`
-  * Non-owning observer. It holds a reference to an object managed by a std::shared_ptr but does not contribute to the reference count.
+  * Non-owning observer. It holds a reference to an object managed by a `std::shared_ptr` but does not contribute to the reference count.
   * Prevents cyclic dependencies (circular references) that cause memory leaks.
-  * Cannot access the resource directly; it must be temporarily converted back into a std::shared_ptr using .lock() to check if the resource still exists.
+  * Cannot access the resource directly; it must be temporarily converted back into a `std::shared_ptr` using `weak_ptr.lock()` to check if the resource still exists.
 
 ```cpp
 class Resource {};
