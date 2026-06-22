@@ -8,9 +8,9 @@ A capture with an initializer, called *init-capture*, acts as if it declares and
     * in other words, the source variable does not actually exist, and the type deduction via auto and the initialization are applied to the non-static data member;
 * If the capture is by-reference, the reference variable's lifetime ends when the lifetime of the closure object ends.
 
-This is used to capture move-only types with a capture such as x = std::move(x).
+This is used to capture move-only types with a capture such as `x = std::move(x)`.
 
-This also makes it possible to capture by const reference, with &cr = std::as_const(x) or similar.
+This also makes it possible to capture by const reference, with `&cr = std::as_const(x)` or similar.
 
 ```cpp
 #include <memory>
